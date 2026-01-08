@@ -94,6 +94,11 @@ public class LoginController implements GCMClient.MessageHandler {
             usernameErrorLabel.setStyle("-fx-text-fill: #e74c3c;");
             return false;
         }
+        if (username.length() > USERNAME_MAX_LENGTH) {
+            usernameErrorLabel.setText("Max " + USERNAME_MAX_LENGTH + " chars");
+            usernameErrorLabel.setStyle("-fx-text-fill: #e74c3c;");
+            return false;
+        }
         usernameErrorLabel.setText("✓");
         usernameErrorLabel.setStyle("-fx-text-fill: #27ae60;");
         return true;
@@ -107,6 +112,11 @@ public class LoginController implements GCMClient.MessageHandler {
         }
         if (password.length() < PASSWORD_MIN_LENGTH) {
             passwordErrorLabel.setText("Min " + PASSWORD_MIN_LENGTH + " chars");
+            passwordErrorLabel.setStyle("-fx-text-fill: #e74c3c;");
+            return false;
+        }
+        if (password.length() > PASSWORD_MAX_LENGTH) {
+            passwordErrorLabel.setText("Max " + PASSWORD_MAX_LENGTH + " chars");
             passwordErrorLabel.setStyle("-fx-text-fill: #e74c3c;");
             return false;
         }

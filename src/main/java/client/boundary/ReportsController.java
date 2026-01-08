@@ -107,20 +107,21 @@ public class ReportsController implements GCMClient.MessageHandler {
         });
     }
 
+    @SuppressWarnings("unchecked")
     private void handleResponse(Response response) {
         if (response.getRequestType() == MessageType.GET_CITIES) {
-            if (response.isSuccess()) {
+            if (response.isOk()) {
                 List<City> cities = (List<City>) response.getPayload();
                 cityComboBox.setItems(FXCollections.observableArrayList(cities));
             }
         } else if (response.getRequestType() == MessageType.GET_ACTIVITY_REPORT) {
-            if (response.isSuccess()) {
+            if (response.isOk()) {
                 List<DailyStat> stats = (List<DailyStat>) response.getPayload();
                 updateChart(stats);
                 statusLabel.setText("Report generated successfully.");
             } else {
-                statusLabel.setText("Error: " + response.getMessage());
-                showAlert("Error", "Failed to generate report: " + response.getMessage());
+                statusLabel.setText("Error: " + response.getErrorMessage());
+                showAlert("Error", "Failed to generate report: " + response.getErrorMessage());
             }
         }
     }

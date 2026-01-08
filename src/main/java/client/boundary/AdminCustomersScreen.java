@@ -256,7 +256,6 @@ public class AdminCustomersScreen implements GCMClient.MessageHandler {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void displayMessage(Object msg) {
         Platform.runLater(() -> {
             if (!(msg instanceof Response))

@@ -19,6 +19,7 @@ import java.util.Map;
  * Handler for all support ticket operations.
  * Manages ticket creation, escalation, and agent interactions.
  */
+@SuppressWarnings("unused") // Suppress false positive dead code warnings on null checks
 public class SupportHandler {
 
     // Action names for audit logging

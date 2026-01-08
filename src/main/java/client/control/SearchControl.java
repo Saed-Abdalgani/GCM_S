@@ -1,7 +1,6 @@
 package client.control;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import client.GCMClient;

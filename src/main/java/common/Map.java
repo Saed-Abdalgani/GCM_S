@@ -15,6 +15,18 @@ public class Map implements Serializable {
         this.cityId = cityId;
     }
 
+    public int getId() {
+        return id;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public int getCityId() {
+        return cityId;
+    }
+
     public String toString() {
         return "Map ID: " + id + " | " + description;
     }
