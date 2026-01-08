@@ -38,7 +38,7 @@
                             <Label text="Purchases" style="-fx-text-fill: #888; -fx-font-size: 12px;"/>
                         </VBox>
                         <VBox alignment="CENTER" spacing="5" style="-fx-background-color: rgba(39,174,96,0.2); -fx-background-radius: 10; -fx-padding: 15;">
-                            <Label fx:id="totalSpentLabel" text="$0" style="-fx-text-fill: #27ae60; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+                            <Label fx:id="totalSpentLabel" text="0" style="-fx-text-fill: #27ae60; -fx-font-size: 24px; -fx-font-weight: bold;"/>
                             <Label text="Total Spent" style="-fx-text-fill: #888; -fx-font-size: 12px;"/>
                         </VBox>
                     </HBox>

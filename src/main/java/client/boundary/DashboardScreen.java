@@ -49,6 +49,10 @@ public class DashboardScreen implements GCMClient.MessageHandler {
     private VBox agentConsoleCard;
     @FXML
     private VBox reportsCard;
+    @FXML
+    private TextField updateIdField;
+    @FXML
+    private TextField priceField;
 
     private GCMClient client;
 
@@ -337,6 +341,23 @@ public class DashboardScreen implements GCMClient.MessageHandler {
     @FXML
     private void clearResults(ActionEvent event) {
         resultArea.clear();
+    }
+
+    @FXML
+    private void updatePrice(ActionEvent event) {
+        String id = updateIdField.getText();
+        String price = priceField.getText();
+        if (id.isEmpty() || price.isEmpty()) {
+            resultArea.setText("Error: Please enter both City ID and Price.");
+            return;
+        }
+        try {
+            Double.parseDouble(price);
+        } catch (NumberFormatException e) {
+            resultArea.setText("Error: Price must be a valid number.");
+            return;
+        }
+        sendMessage("update_price " + id + " " + price);
     }
 
     // ==================== Navigation ====================
