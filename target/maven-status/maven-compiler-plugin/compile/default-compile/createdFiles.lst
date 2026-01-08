@@ -1,0 +1,7 @@
+common\Response.class
+server\handler\NotificationHandler$1.class
+server\SessionManager$SessionInfo.class
+server\SessionManager.class
+common\MessageType.class
+common\Request.class
+common\dto\MapSummary.class

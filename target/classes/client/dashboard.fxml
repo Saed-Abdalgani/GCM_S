@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="client.boundary.DashboardScreen"
+            style="-fx-background-color: #0f0f23;">
+    
+    <!-- Header -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-padding: 15 25;">
+            <Label text="🌍 GCM Dashboard" style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="userInfoLabel" text="Welcome, Guest" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 14px;"/>
+            <Button fx:id="logoutBtn" text="Logout" onAction="#handleLogout"
+                    style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 15;"/>
+        </HBox>
+    </top>
+    
+    <!-- Main Content -->
+    <center>
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #0f0f23;">
+            <VBox spacing="25" style="-fx-padding: 30;">
+                
+                <!-- Quick Actions Cards -->
+                <VBox spacing="15">
+                    <HBox alignment="CENTER_LEFT" spacing="15">
+                        <Label text="Quick Actions" style="-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <!-- Notification Bell -->
+                        <HBox alignment="CENTER" style="-fx-cursor: hand;" onMouseClicked="#openNotifications">
+                            <Label text="🔔" style="-fx-font-size: 24px;"/>
+                            <Label fx:id="notificationBadge" text="" 
+                                   style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 2 6; -fx-background-radius: 10; -fx-translate-x: -10; -fx-translate-y: -8;"/>
+                        </HBox>
+                    </HBox>
+                    <HBox spacing="20">
+                        <!-- Browse Catalog Card -->
+                        <VBox spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #667eea, #764ba2); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openSearchScreen">
+                            <Label text="🔍" style="-fx-font-size: 32px;"/>
+                            <Label text="Browse Catalog" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Search maps" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- Map Editor Card -->
+                        <VBox spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #e74c3c, #c0392b); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openMapEditor">
+                            <Label text="✏️" style="-fx-font-size: 32px;"/>
+                            <Label text="Map Editor" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Edit content" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- My Purchases Card -->
+                        <VBox spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #27ae60, #1e8449); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openMyPurchases">
+                            <Label text="🛒" style="-fx-font-size: 32px;"/>
+                            <Label text="My Purchases" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="View history" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- My Profile Card -->
+                        <VBox spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #9b59b6, #8e44ad); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openProfile">
+                            <Label text="👤" style="-fx-font-size: 32px;"/>
+                            <Label text="My Profile" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Edit info" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- Admin Customers Card (visible for managers) -->
+                        <VBox fx:id="adminCustomersCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #f39c12, #d68910); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openAdminCustomers" visible="false" managed="false">
+                            <Label text="👥" style="-fx-font-size: 32px;"/>
+                            <Label text="Customers" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Manage users" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- Pricing Management Card (visible for content managers+) -->
+                        <VBox fx:id="pricingCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #00b894, #00a085); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openPricingScreen" visible="false" managed="false">
+                            <Label text="💰" style="-fx-font-size: 32px;"/>
+                            <Label text="Pricing" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Manage prices" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- Pricing Approval Card (visible for company managers) -->
+                        <VBox fx:id="pricingApprovalCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #e17055, #d63031); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openPricingApproval" visible="false" managed="false">
+                            <Label text="⚖️" style="-fx-font-size: 32px;"/>
+                            <Label text="Approve Prices" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Review requests" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- Support Card (visible to all users) -->
+                        <VBox fx:id="supportCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #00cec9, #0984e3); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openSupportScreen">
+                            <Label text="💬" style="-fx-font-size: 32px;"/>
+                            <Label text="Support" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Get help" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                        
+                        <!-- Agent Console Card (visible for support agents) -->
+                        <VBox fx:id="agentConsoleCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #a29bfe, #6c5ce7); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openAgentConsole" visible="false" managed="false">
+                            <Label text="📞" style="-fx-font-size: 32px;"/>
+                            <Label text="Agent Console" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Manage tickets" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+                
+                <Separator style="-fx-background-color: #333;"/>
+                
+                <!-- City Operations Section -->
+                <VBox spacing="15">
+                    <Label text="City Operations" style="-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;"/>
+                    
+                    <HBox spacing="20">
+                        <!-- Show All Cities -->
+                        <VBox spacing="10" style="-fx-background-color: #1a1a2e; -fx-background-radius: 10; -fx-padding: 20;">
+                            <Label text="Show All Cities" style="-fx-text-fill: #3498db; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+                            <Button text="Load Cities" onAction="#getAllCities" prefWidth="150"
+                                    style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 5;"/>
+                        </VBox>
+                        
+                        <!-- Get Maps by City -->
+                        <VBox spacing="10" style="-fx-background-color: #1a1a2e; -fx-background-radius: 10; -fx-padding: 20;">
+                            <Label text="Get Maps by City ID" style="-fx-text-fill: #27ae60; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+                            <HBox spacing="10">
+                                <TextField fx:id="cityIdField" promptText="City ID" prefWidth="100"
+                                          style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8;"/>
+                                <Button text="Get Maps" onAction="#getMaps"
+                                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 5;"/>
+                            </HBox>
+                        </VBox>
+                        
+                        <!-- Update Price -->
+                        <VBox spacing="10" style="-fx-background-color: #1a1a2e; -fx-background-radius: 10; -fx-padding: 20;">
+                            <Label text="Update City Price" style="-fx-text-fill: #e67e22; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+                            <HBox spacing="10">
+                                <TextField fx:id="updateIdField" promptText="City ID" prefWidth="80"
+                                          style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8;"/>
+                                <TextField fx:id="priceField" promptText="Price" prefWidth="80"
+                                          style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 8;"/>
+                                <Button text="Update" onAction="#updatePrice"
+                                        style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 5;"/>
+                            </HBox>
+                        </VBox>
+                    </HBox>
+                </VBox>
+                
+                <Separator style="-fx-background-color: #333;"/>
+                
+                <!-- Results Section -->
+                <VBox spacing="10">
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Results" style="-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="Clear" onAction="#clearResults"
+                                style="-fx-background-color: #666; -fx-text-fill: white; -fx-font-size: 11px; -fx-padding: 5 15; -fx-background-radius: 5;"/>
+                    </HBox>
+                    <TextArea fx:id="resultArea" prefHeight="200" wrapText="true"
+                              promptText="Server responses will appear here..."
+                              style="-fx-background-color: #16213e; -fx-text-fill: #aaa; -fx-font-family: 'Consolas', monospace; -fx-font-size: 13px; -fx-control-inner-background: #16213e;"/>
+                </VBox>
+                
+            </VBox>
+        </ScrollPane>
+    </center>
+    
+    <!-- Footer -->
+    <bottom>
+        <HBox alignment="CENTER" spacing="20" style="-fx-background-color: #1a1a2e; -fx-padding: 10;">
+            <Label text="GCM System v2.0" style="-fx-text-fill: #666; -fx-font-size: 11px;"/>
+            <Label text="•" style="-fx-text-fill: #666;"/>
+            <Label fx:id="statusLabel" text="Connected to server" style="-fx-text-fill: #27ae60; -fx-font-size: 11px;"/>
+        </HBox>
+    </bottom>
+</BorderPane>

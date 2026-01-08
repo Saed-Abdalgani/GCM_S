@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="client.boundary.ProfileScreen"
+            style="-fx-background-color: #0f0f23;">
+    
+    <!-- Header -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-padding: 15 25;">
+            <Button fx:id="backBtn" text="← Back" onAction="#handleBack"
+                    style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 15;"/>
+            <Label text="👤 My Profile" style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="userInfoLabel" text="" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 14px;"/>
+        </HBox>
+    </top>
+    
+    <!-- Main Content -->
+    <center>
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #0f0f23;">
+            <VBox spacing="25" style="-fx-padding: 30;">
+                
+                <!-- Profile Card -->
+                <VBox spacing="20" style="-fx-background-color: #1a1a2e; -fx-background-radius: 15; -fx-padding: 25;">
+                    <HBox alignment="CENTER_LEFT" spacing="15">
+                        <Label text="👤" style="-fx-font-size: 48px;"/>
+                        <VBox spacing="5">
+                            <Label fx:id="usernameLabel" text="Username" style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+                            <Label fx:id="memberSinceLabel" text="Member since: ---" style="-fx-text-fill: #888; -fx-font-size: 12px;"/>
+                        </VBox>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: rgba(102,126,234,0.2); -fx-background-radius: 10; -fx-padding: 15;">
+                            <Label fx:id="totalPurchasesLabel" text="0" style="-fx-text-fill: #667eea; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+                            <Label text="Purchases" style="-fx-text-fill: #888; -fx-font-size: 12px;"/>
+                        </VBox>
+                        <VBox alignment="CENTER" spacing="5" style="-fx-background-color: rgba(39,174,96,0.2); -fx-background-radius: 10; -fx-padding: 15;">
+                            <Label fx:id="totalSpentLabel" text="$0" style="-fx-text-fill: #27ae60; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+                            <Label text="Total Spent" style="-fx-text-fill: #888; -fx-font-size: 12px;"/>
+                        </VBox>
+                    </HBox>
+                    
+                    <Separator style="-fx-background-color: #333;"/>
+                    
+                    <!-- Profile Form -->
+                    <GridPane hgap="20" vgap="15">
+                        <columnConstraints>
+                            <ColumnConstraints minWidth="120" halignment="RIGHT"/>
+                            <ColumnConstraints hgrow="ALWAYS" minWidth="250"/>
+                            <ColumnConstraints minWidth="120" halignment="RIGHT"/>
+                            <ColumnConstraints hgrow="ALWAYS" minWidth="250"/>
+                        </columnConstraints>
+                        
+                        <Label text="Email:" style="-fx-text-fill: #888; -fx-font-size: 14px;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <TextField fx:id="emailField" promptText="your@email.com" 
+                                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10; -fx-background-radius: 5;" 
+                                   GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                        
+                        <Label text="Phone:" style="-fx-text-fill: #888; -fx-font-size: 14px;" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+                        <TextField fx:id="phoneField" promptText="+1 234 567 8900"
+                                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10; -fx-background-radius: 5;"
+                                   GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+                        
+                        <Label text="Card:" style="-fx-text-fill: #888; -fx-font-size: 14px;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <Label fx:id="cardLabel" text="**** **** **** ----" 
+                               style="-fx-text-fill: #667eea; -fx-font-size: 14px; -fx-font-family: 'Consolas';" 
+                               GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        
+                        <Label text="Last Login:" style="-fx-text-fill: #888; -fx-font-size: 14px;" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+                        <Label fx:id="lastLoginLabel" text="---" style="-fx-text-fill: white; -fx-font-size: 14px;" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+                    </GridPane>
+                    
+                    <!-- Save Button -->
+                    <HBox alignment="CENTER_RIGHT" spacing="15">
+                        <Label fx:id="statusLabel" text="" style="-fx-font-size: 12px;"/>
+                        <Button fx:id="saveBtn" text="💾 Save Changes" onAction="#handleSaveProfile"
+                                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 25; -fx-background-radius: 5;"/>
+                    </HBox>
+                </VBox>
+                
+                <!-- Purchase History Section -->
+                <VBox spacing="15">
+                    <HBox alignment="CENTER_LEFT" spacing="15">
+                        <Label text="📦 Purchase History" style="-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="🔄 Refresh" onAction="#handleRefresh"
+                                style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 5;"/>
+                    </HBox>
+                    
+                    <TableView fx:id="purchasesTable" prefHeight="300" 
+                               style="-fx-background-color: #1a1a2e; -fx-control-inner-background: #1a1a2e;">
+                        <columns>
+                            <TableColumn fx:id="cityCol" text="City" prefWidth="180"/>
+                            <TableColumn fx:id="typeCol" text="Type" prefWidth="120"/>
+                            <TableColumn fx:id="priceCol" text="Price" prefWidth="100"/>
+                            <TableColumn fx:id="dateCol" text="Date" prefWidth="150"/>
+                            <TableColumn fx:id="statusCol" text="Status" prefWidth="100"/>
+                            <TableColumn fx:id="expiryCol" text="Expires" prefWidth="120"/>
+                            <TableColumn fx:id="actionCol" text="Action" prefWidth="100"/>
+                        </columns>
+                        <placeholder>
+                            <Label text="No purchases yet. Start exploring cities!" style="-fx-text-fill: #666;"/>
+                        </placeholder>
+                    </TableView>
+                </VBox>
+                
+            </VBox>
+        </ScrollPane>
+    </center>
+    
+    <!-- Footer -->
+    <bottom>
+        <HBox alignment="CENTER" spacing="20" style="-fx-background-color: #1a1a2e; -fx-padding: 10;">
+            <Label text="GCM Profile" style="-fx-text-fill: #666; -fx-font-size: 11px;"/>
+            <Label text="•" style="-fx-text-fill: #666;"/>
+            <Label fx:id="connectionLabel" text="Connected" style="-fx-text-fill: #27ae60; -fx-font-size: 11px;"/>
+        </HBox>
+    </bottom>
+</BorderPane>

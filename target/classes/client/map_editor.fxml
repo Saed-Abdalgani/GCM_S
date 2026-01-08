@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="client.boundary.MapEditorScreen"
+            style="-fx-background-color: #0f0f23;">
+    
+    <!-- Header -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: linear-gradient(to right, #e74c3c, #c0392b); -fx-padding: 15 25;">
+            <Label text="✏️ Map Editor" style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="statusLabel" text="Ready" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 13px;"/>
+            <Button fx:id="backButton" text="← Back" onAction="#handleBack"
+                    style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 15;"/>
+        </HBox>
+    </top>
+    
+    <!-- Left Panel: City and Map Selection -->
+    <left>
+        <VBox prefWidth="280" spacing="0" style="-fx-background-color: #1a1a2e;">
+            
+            <!-- City Section -->
+            <VBox spacing="10" style="-fx-padding: 15; -fx-border-color: #333; -fx-border-width: 0 0 1 0;">
+                <Label text="Cities" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                <ComboBox fx:id="cityComboBox" promptText="Select a city..." prefWidth="250"
+                          style="-fx-background-color: #16213e; -fx-font-size: 13px;"/>
+                          
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Price:" style="-fx-text-fill: #aaa; -fx-font-size: 12px;"/>
+                    <TextField fx:id="cityPriceField" promptText="0.0" prefWidth="100"
+                              style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                    <Button text="Update" onAction="#handleUpdatePrice"
+                            style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 5 10; -fx-background-radius: 5;"/>
+                </HBox>
+                <Button fx:id="createCityBtn" text="+ Create New City" onAction="#handleCreateCity" prefWidth="250"
+                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 5;"/>
+            </VBox>
+            
+            <!-- Maps Section -->
+            <VBox spacing="10" VBox.vgrow="ALWAYS" style="-fx-padding: 15;">
+                <Label text="Maps" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                <ListView fx:id="mapsListView" VBox.vgrow="ALWAYS"
+                          style="-fx-background-color: #0f0f23; -fx-control-inner-background: #0f0f23;"/>
+                <Button fx:id="createMapBtn" text="+ Create New Map" onAction="#handleCreateMap" prefWidth="250"
+                        style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 5;"/>
+            </VBox>
+        </VBox>
+    </left>
+    
+    <!-- Center: Content Editor Tabs -->
+    <center>
+        <VBox style="-fx-padding: 15;">
+            <TabPane fx:id="contentTabs" VBox.vgrow="ALWAYS" style="-fx-background-color: #1a1a2e;">
+                
+                <!-- POIs Tab -->
+                <Tab text="📍 POIs" closable="false">
+                    <VBox spacing="15" style="-fx-padding: 15;">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="Points of Interest" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="addPoiBtn" text="+ Add POI" onAction="#handleAddPoi"
+                                    style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 12; -fx-background-radius: 5;"/>
+                        </HBox>
+                        <ListView fx:id="poisListView" VBox.vgrow="ALWAYS"
+                                  style="-fx-background-color: #0f0f23; -fx-control-inner-background: #0f0f23;"/>
+                        
+                        <!-- POI Edit Form -->
+                        <VBox fx:id="poiEditForm" spacing="10" visible="false" managed="false"
+                              style="-fx-background-color: #16213e; -fx-padding: 15; -fx-background-radius: 8;">
+                            <Label text="Edit POI" style="-fx-text-fill: #e74c3c; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+                            <HBox spacing="10">
+                                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                                    <Label text="Name" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                    <TextField fx:id="poiNameField" promptText="POI name"
+                                              style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                                </VBox>
+                                <VBox spacing="3">
+                                    <Label text="Category" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                    <ComboBox fx:id="poiCategoryCombo" promptText="Category" prefWidth="150"
+                                              style="-fx-background-color: #0f0f23; -fx-font-size: 13px;"/>
+                                </VBox>
+                            </HBox>
+                            <HBox spacing="10">
+                                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                                    <Label text="Location" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                    <TextField fx:id="poiLocationField" promptText="lat,lng or description"
+                                              style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                                </VBox>
+                                <VBox spacing="3">
+                                    <Label text="Accessible" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                    <CheckBox fx:id="poiAccessibleCheck" style="-fx-text-fill: white;"/>
+                                </VBox>
+                            </HBox>
+                            <VBox spacing="3">
+                                <Label text="Description" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                <TextArea fx:id="poiDescArea" prefRowCount="2" promptText="Short explanation"
+                                          style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                            </VBox>
+                            <HBox spacing="10" alignment="CENTER_RIGHT">
+                                <Button text="Cancel" onAction="#handleCancelPoiEdit"
+                                        style="-fx-background-color: #666; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 15; -fx-background-radius: 5;"/>
+                                <Button text="Delete" onAction="#handleDeletePoi"
+                                        style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 15; -fx-background-radius: 5;"/>
+                                <Button text="Save" onAction="#handleSavePoi"
+                                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 15; -fx-background-radius: 5;"/>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </Tab>
+                
+                <!-- Tours Tab -->
+                <Tab text="🚶 Tours" closable="false">
+                    <VBox spacing="15" style="-fx-padding: 15;">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="Tours" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="addTourBtn" text="+ Create Tour" onAction="#handleAddTour"
+                                    style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 12; -fx-background-radius: 5;"/>
+                        </HBox>
+                        <ListView fx:id="toursListView" prefHeight="150"
+                                  style="-fx-background-color: #0f0f23; -fx-control-inner-background: #0f0f23;"/>
+                        
+                        <!-- Tour Stops -->
+                        <VBox fx:id="tourStopsSection" spacing="10" visible="false" managed="false">
+                            <HBox spacing="10" alignment="CENTER_LEFT">
+                                <Label fx:id="tourNameLabel" text="Tour Stops" style="-fx-text-fill: #9b59b6; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="+ Add Stop" onAction="#handleAddTourStop"
+                                        style="-fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-size: 11px; -fx-padding: 5 10; -fx-background-radius: 5;"/>
+                            </HBox>
+                            <ListView fx:id="tourStopsListView" VBox.vgrow="ALWAYS"
+                                      style="-fx-background-color: #0f0f23; -fx-control-inner-background: #0f0f23;"/>
+                        </VBox>
+                        
+                        <!-- Tour Edit Form -->
+                        <VBox fx:id="tourEditForm" spacing="10" visible="false" managed="false"
+                              style="-fx-background-color: #16213e; -fx-padding: 15; -fx-background-radius: 8;">
+                            <Label text="Edit Tour" style="-fx-text-fill: #9b59b6; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+                            <HBox spacing="10">
+                                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                                    <Label text="Tour Name" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                    <TextField fx:id="tourNameField" promptText="Tour name"
+                                              style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                                </VBox>
+                                <VBox spacing="3">
+                                    <Label text="Duration (min)" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                    <TextField fx:id="tourDurationField" promptText="60" prefWidth="100"
+                                              style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                                </VBox>
+                            </HBox>
+                            <VBox spacing="3">
+                                <Label text="Description" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                <TextArea fx:id="tourDescArea" prefRowCount="2" promptText="Tour description"
+                                          style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                            </VBox>
+                            <HBox spacing="10" alignment="CENTER_RIGHT">
+                                <Button text="Cancel" onAction="#handleCancelTourEdit"
+                                        style="-fx-background-color: #666; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 15; -fx-background-radius: 5;"/>
+                                <Button text="Delete" onAction="#handleDeleteTour"
+                                        style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 15; -fx-background-radius: 5;"/>
+                                <Button text="Save" onAction="#handleSaveTour"
+                                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 6 15; -fx-background-radius: 5;"/>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </Tab>
+                
+                <!-- Map Info Tab -->
+                <Tab text="📋 Map Info" closable="false">
+                    <VBox spacing="15" style="-fx-padding: 15;">
+                        <Label text="Map Information" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                        <VBox spacing="3">
+                            <Label text="Map Name" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                            <TextField fx:id="mapNameField" promptText="Map name"
+                                      style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;"/>
+                        </VBox>
+                        <VBox spacing="3">
+                            <Label text="Description" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                            <TextArea fx:id="mapDescArea" prefRowCount="4" promptText="Map description"
+                                      style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px;"/>
+                        </VBox>
+                        <HBox spacing="10" alignment="CENTER_RIGHT">
+                            <Button text="Save Map Info" onAction="#handleSaveMapInfo"
+                                    style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 10 25; -fx-background-radius: 5;"/>
+                        </HBox>
+                    </VBox>
+                </Tab>
+            </TabPane>
+        </VBox>
+    </center>
+    
+    <!-- Right Panel: Quick Actions / Help -->
+    <right>
+        <VBox prefWidth="220" spacing="15" style="-fx-background-color: #1a1a2e; -fx-padding: 15;">
+            <Label text="Quick Actions" style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            
+            <Button text="📋 Save All Changes" onAction="#handleSaveAllChanges" prefWidth="190"
+                    style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 10 15; -fx-background-radius: 5;"/>
+            
+            <Button text="↩️ Discard Changes" onAction="#handleDiscardChanges" prefWidth="190"
+                    style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 10 15; -fx-background-radius: 5;"/>
+            
+            <Separator style="-fx-background-color: #333;"/>
+            
+            <Label text="Help" style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            
+            <VBox spacing="8" style="-fx-background-color: #16213e; -fx-padding: 12; -fx-background-radius: 8;">
+                <Label text="📍 POIs" style="-fx-text-fill: #27ae60; -fx-font-size: 12px; -fx-font-weight: bold;"/>
+                <Label text="Points of interest that appear on maps" wrapText="true" style="-fx-text-fill: #888; -fx-font-size: 11px;"/>
+            </VBox>
+            
+            <VBox spacing="8" style="-fx-background-color: #16213e; -fx-padding: 12; -fx-background-radius: 8;">
+                <Label text="🚶 Tours" style="-fx-text-fill: #9b59b6; -fx-font-size: 12px; -fx-font-weight: bold;"/>
+                <Label text="Guided routes through POIs with durations" wrapText="true" style="-fx-text-fill: #888; -fx-font-size: 11px;"/>
+            </VBox>
+            
+            <VBox spacing="8" style="-fx-background-color: #16213e; -fx-padding: 12; -fx-background-radius: 8;">
+                <Label text="⚠️ Note" style="-fx-text-fill: #f39c12; -fx-font-size: 12px; -fx-font-weight: bold;"/>
+                <Label text="POIs used in tours cannot be deleted" wrapText="true" style="-fx-text-fill: #888; -fx-font-size: 11px;"/>
+            </VBox>
+        </VBox>
+    </right>
+</BorderPane>
