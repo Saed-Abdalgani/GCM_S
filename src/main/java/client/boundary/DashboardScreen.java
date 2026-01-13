@@ -255,13 +255,27 @@ public class DashboardScreen implements GCMClient.MessageHandler {
 
     @FXML
     private void openAgentConsole(MouseEvent event) {
+        System.out.println("openAgentConsole clicked - Current role: " + LoginController.currentUserRole);
+
         if (LoginController.currentUserRole != LoginController.UserRole.SUPPORT_AGENT) {
             showAlert(Alert.AlertType.WARNING, "Access Denied", "Agent Access Required",
-                    "Only support agents can access the console.");
+                    "Only support agents can access the console.\nYour role: " + LoginController.currentUserRole);
             return;
         }
 
-        navigateTo("/client/agent_console.fxml", "Agent Console", 1000, 700);
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/agent_console.fxml"));
+            Parent root = loader.load();
+            Stage stage = (Stage) resultArea.getScene().getWindow();
+            stage.setScene(new Scene(root, 1000, 700));
+            stage.setTitle("Agent Console");
+            stage.centerOnScreen();
+        } catch (IOException e) {
+            System.err.println("Error loading agent_console.fxml: " + e.getMessage());
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Error", "Navigation Failed",
+                    "Could not open Agent Console: " + e.getMessage());
+        }
     }
 
     @FXML

@@ -138,12 +138,16 @@ public class LoginController implements GCMClient.MessageHandler {
         statusLabel.setText("Logging in...");
         statusLabel.setStyle("-fx-text-fill: #3498db;");
 
-        // Send login request via singleton client
+        // Send login request via new protocol (creates session token)
         try {
             if (client == null)
                 client = GCMClient.getInstance();
             client.setMessageHandler(this);
-            client.sendToServer("login " + username + " " + password);
+
+            // Use new LoginRequest protocol (with session token)
+            common.dto.LoginRequest loginRequest = new common.dto.LoginRequest(username, password);
+            common.Request request = new common.Request(common.MessageType.LOGIN, loginRequest);
+            client.sendToServer(request);
         } catch (IOException e) {
             statusLabel.setText("Connection lost");
             statusLabel.setStyle("-fx-text-fill: #e74c3c;");
@@ -225,6 +229,11 @@ public class LoginController implements GCMClient.MessageHandler {
                 currentUserRole = UserRole.CUSTOMER;
         }
 
+        // Sync user info to GCMClient singleton for screens that use it
+        if (client != null) {
+            client.setCurrentUser(currentUserId, currentUsername, role);
+        }
+
         System.out.println("Login successful: " + currentUsername + " (token: " +
                 currentSessionToken.substring(0, 8) + "...)");
         navigateToMainPage();
@@ -258,6 +267,11 @@ public class LoginController implements GCMClient.MessageHandler {
                 break;
             default:
                 currentUserRole = UserRole.CUSTOMER;
+        }
+
+        // Sync user info to GCMClient singleton for screens that use it
+        if (client != null) {
+            client.setCurrentUser(currentUserId, currentUsername, role);
         }
 
         System.out.println("Login successful: " + currentUsername + " (" + currentUserRole + ")");

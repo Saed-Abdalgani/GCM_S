@@ -163,8 +163,15 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         if (gcmClient == null)
             return;
 
+        String token = LoginController.currentSessionToken;
+
+        // For legacy login (no token), display local info instead
+        if (token == null || token.isEmpty()) {
+            displayLocalProfile();
+            return;
+        }
+
         try {
-            String token = LoginController.currentSessionToken;
             Request request = new Request(MessageType.GET_MY_PROFILE, null, token);
             gcmClient.sendToServer(request);
             statusLabel.setText("Loading profile...");
@@ -173,6 +180,26 @@ public class ProfileScreen implements GCMClient.MessageHandler {
             showError("Failed to load profile");
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Display profile from local login data (for legacy logins without session
+     * token).
+     */
+    private void displayLocalProfile() {
+        usernameLabel.setText(LoginController.currentUsername != null ? LoginController.currentUsername : "User");
+        userInfoLabel
+                .setText("@" + (LoginController.currentUsername != null ? LoginController.currentUsername : "user"));
+        memberSinceLabel.setText("Member since: ---");
+        totalPurchasesLabel.setText("0");
+        totalSpentLabel.setText("$0.00");
+        emailField.setPromptText("your@email.com");
+        phoneField.setPromptText("+1 234 567 8900");
+        cardLabel.setText("**** **** **** ----");
+        lastLoginLabel.setText("---");
+        statusLabel.setText("");
+        // Disable save for legacy login since no token
+        saveBtn.setDisable(true);
     }
 
     private void loadPurchases() {
@@ -324,8 +351,42 @@ public class ProfileScreen implements GCMClient.MessageHandler {
     @SuppressWarnings("unchecked")
     private void handlePurchasesResponse(Response response) {
         if (response.getPayload() instanceof List) {
-            List<CustomerPurchaseDTO> purchases = (List<CustomerPurchaseDTO>) response.getPayload();
-            displayPurchases(purchases);
+            List<?> rawList = (List<?>) response.getPayload();
+            if (rawList.isEmpty()) {
+                purchaseRows.clear();
+                return;
+            }
+
+            // Check what type the server sent
+            Object first = rawList.get(0);
+            if (first instanceof common.dto.EntitlementInfo) {
+                // Server sends EntitlementInfo
+                List<common.dto.EntitlementInfo> entitlements = (List<common.dto.EntitlementInfo>) rawList;
+                displayEntitlements(entitlements);
+            } else if (first instanceof CustomerPurchaseDTO) {
+                // Server sends CustomerPurchaseDTO
+                List<CustomerPurchaseDTO> purchases = (List<CustomerPurchaseDTO>) rawList;
+                displayPurchases(purchases);
+            }
+        }
+    }
+
+    private void displayEntitlements(List<common.dto.EntitlementInfo> entitlements) {
+        purchaseRows.clear();
+
+        for (common.dto.EntitlementInfo e : entitlements) {
+            String type = e.isSubscription() ? "📅 Subscription" : "🛒 One-time";
+            String expiry = e.getExpiryDate() != null ? e.getExpiryDate().format(DATE_FORMAT) : "-";
+            String status = e.isActive() ? "Active" : "Expired";
+
+            purchaseRows.add(new PurchaseRow(
+                    e.getCityId(),
+                    e.getCityName() != null && !e.getCityName().isEmpty() ? e.getCityName() : "City #" + e.getCityId(),
+                    type,
+                    "-", // Price not available in EntitlementInfo
+                    "-", // Purchase date not available
+                    status,
+                    expiry));
         }
     }
 

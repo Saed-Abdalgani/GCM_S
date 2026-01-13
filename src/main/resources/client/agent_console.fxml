@@ -58,7 +58,7 @@
                         <Label fx:id="ticketInfoLabel" text="" 
                                style="-fx-text-fill: #aaa; -fx-font-size: 12px;"/>
                     </VBox>
-                    <Button fx:id="resolveBtn" text="✓ Resolve & Close" onAction="#resolveTicket"
+                    <Button fx:id="resolveBtn" text="✓ Resolve and Close" onAction="#resolveTicket"
                             style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 15;" visible="false"/>
                 </HBox>
                 
