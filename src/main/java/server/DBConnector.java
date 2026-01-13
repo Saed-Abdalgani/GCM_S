@@ -7,9 +7,9 @@ import java.sql.SQLException;
 public class DBConnector {
 
     // ADJUST THESE TO MATCH YOUR MYSQL SETUP
-    private static final String URL = "jdbc:mysql://localhost:3307/gcm_db?serverTimezone=Asia/Jerusalem";
+    private static final String URL = "jdbc:mysql://localhost:3306/gcm_db?serverTimezone=Asia/Jerusalem";
     private static final String USER = "root";
-    private static final String PASS = "SAED325@@ab"; // <--- Put your MySQL password here
+    private static final String PASS = ""; // <--- Put your MySQL password here
 
     public static Connection getConnection() {
         try {
