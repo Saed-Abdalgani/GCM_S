@@ -22,7 +22,6 @@ server\dao\SupportDAO.class
 client\boundary\ProfileScreen.class
 client\boundary\SupportScreen$4.class
 server\dao\SupportDAO$FaqEntry.class
-common\dto\TicketMessageDTO$1.class
 server\dao\PoiDAO.class
 ocsf\server\AbstractServer$1.class
 client\boundary\MapEditorScreen$2.class
@@ -63,7 +62,6 @@ client\control\ContentManagementControl.class
 common\dto\CityDTO.class
 server\service\AllCitiesReportGenerator.class
 client\boundary\MapEditorScreen$1.class
-common\dto\SupportTicketDTO$1.class
 server\scheduler\SubscriptionScheduler.class
 client\control\PurchaseControl.class
 client\boundary\MapEditorScreen$3.class
