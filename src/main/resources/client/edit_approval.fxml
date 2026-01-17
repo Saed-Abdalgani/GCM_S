@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.effect.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="client.boundary.EditApprovalScreen"
+            stylesheets="@../styles/modern.css">
+
+    <!-- Header -->
+    <top>
+        <VBox style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-padding: 25;">
+            <HBox alignment="CENTER_LEFT" spacing="15">
+                <Button fx:id="backBtn" text="← Back" onAction="#handleBack"
+                        style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 25; -fx-cursor: hand;"/>
+                <VBox HBox.hgrow="ALWAYS" spacing="3">
+                    <Label text="✏️ Edit Request Approvals" style="-fx-text-fill: white; -fx-font-size: 26px; -fx-font-weight: bold;"/>
+                    <Label text="Review map edits submitted by Content Editors" style="-fx-text-fill: rgba(255,255,255,0.85); -fx-font-size: 13px;"/>
+                </VBox>
+                <VBox alignment="CENTER_RIGHT" spacing="3">
+                    <Label fx:id="pendingCountLabel" text="0 pending" 
+                           style="-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-background-color: rgba(255,255,255,0.2); -fx-padding: 8 18; -fx-background-radius: 20;"/>
+                    <Label fx:id="statusLabel" text="Ready" style="-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 11px;"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- Main Content -->
+    <center>
+        <HBox spacing="25" style="-fx-padding: 25; -fx-background-color: linear-gradient(to bottom, #f5f7fa, #e8ecf1);">
+            
+            <!-- Left: Pending Requests Table -->
+            <VBox spacing="15" HBox.hgrow="ALWAYS" 
+                  style="-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 25; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 15, 0, 0, 4);">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="📋 Pending Edit Requests" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2d3436;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="🔄 Refresh" onAction="#refreshRequests"
+                            style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 20; -fx-cursor: hand; -fx-font-weight: bold;"/>
+                </HBox>
+                
+                <TableView fx:id="versionsTable" VBox.vgrow="ALWAYS" style="-fx-background-radius: 10;">
+                    <columns>
+                        <TableColumn fx:id="mapNameCol" text="Map Name" prefWidth="180"/>
+                        <TableColumn fx:id="cityNameCol" text="City" prefWidth="120"/>
+                        <TableColumn fx:id="editorCol" text="Editor" prefWidth="110"/>
+                        <TableColumn fx:id="versionCol" text="Version" prefWidth="70"/>
+                        <TableColumn fx:id="dateCol" text="Submitted" prefWidth="110"/>
+                    </columns>
+                    <placeholder>
+                        <VBox alignment="CENTER" spacing="10">
+                            <Label text="✨" style="-fx-font-size: 48px;"/>
+                            <Label text="No pending edit requests" style="-fx-text-fill: #95a5a6; -fx-font-size: 14px;"/>
+                            <Label text="All map edits have been reviewed" style="-fx-text-fill: #bdc3c7; -fx-font-size: 12px;"/>
+                        </VBox>
+                    </placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- Right: Request Details Panel -->
+            <VBox spacing="20" prefWidth="420" 
+                  style="-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 25; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 15, 0, 0, 4);">
+                <Label text="📄 Edit Details" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2d3436;"/>
+                
+                <!-- Map Info Card -->
+                <VBox spacing="10" style="-fx-background-color: linear-gradient(to right, #667eea15, #764ba215); -fx-background-radius: 12; -fx-padding: 18; -fx-border-color: #667eea30; -fx-border-radius: 12;">
+                    <HBox spacing="15" alignment="CENTER_LEFT">
+                        <VBox HBox.hgrow="ALWAYS" spacing="4">
+                            <Label text="Map:" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;"/>
+                            <Label fx:id="detailMapLabel" text="(Select a request)" 
+                                   style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2d3436;"/>
+                        </VBox>
+                        <VBox alignment="CENTER_RIGHT" spacing="4">
+                            <Label text="City:" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;"/>
+                            <Label fx:id="detailCityLabel" text="-" 
+                                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #667eea;"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+
+                <!-- Version Badge -->
+                <HBox alignment="CENTER" spacing="15">
+                    <VBox alignment="CENTER" spacing="5" 
+                          style="-fx-background-color: #e8f4fd; -fx-background-radius: 12; -fx-padding: 15 25;">
+                        <Label text="Version" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;"/>
+                        <Label fx:id="detailVersionLabel" text="v-" 
+                               style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #3498db;"/>
+                    </VBox>
+                    <VBox alignment="CENTER" spacing="5" 
+                          style="-fx-background-color: #fef3e2; -fx-background-radius: 12; -fx-padding: 15 25;">
+                        <Label text="Status" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;"/>
+                        <Label fx:id="detailStatusLabel" text="PENDING" 
+                               style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #f39c12;"/>
+                    </VBox>
+                </HBox>
+
+                <!-- Submitter Info -->
+                <HBox spacing="15" alignment="CENTER_LEFT" 
+                      style="-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-padding: 12;">
+                    <Label text="👤" style="-fx-font-size: 20px;"/>
+                    <VBox spacing="2">
+                        <Label text="Submitted by:" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;"/>
+                        <Label fx:id="detailEditorLabel" text="-" 
+                               style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2d3436;"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <VBox spacing="2" alignment="CENTER_RIGHT">
+                        <Label text="Date:" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;"/>
+                        <Label fx:id="detailDateLabel" text="-" 
+                               style="-fx-font-size: 13px; -fx-text-fill: #2d3436;"/>
+                    </VBox>
+                </HBox>
+
+                <!-- Changes Description -->
+                <VBox spacing="8" VBox.vgrow="ALWAYS">
+                    <Label text="📝 Changes Description:" style="-fx-text-fill: #7f8c8d; -fx-font-size: 12px;"/>
+                    <TextArea fx:id="detailChangesArea" editable="false" wrapText="true"
+                              VBox.vgrow="ALWAYS" promptText="Select a request to see changes..."
+                              style="-fx-background-color: #f8f9fa; -fx-border-color: #e0e0e0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-font-size: 13px;"/>
+                </VBox>
+
+                <!-- Action Buttons -->
+                <HBox spacing="15">
+                    <Button fx:id="approveBtn" text="✓ Approve" onAction="#handleApprove"
+                            HBox.hgrow="ALWAYS" prefWidth="180" disable="true"
+                            style="-fx-background-color: linear-gradient(to right, #27ae60, #2ecc71); -fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold; -fx-padding: 15; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                    <Button fx:id="rejectBtn" text="✗ Reject with Note" onAction="#handleReject"
+                            HBox.hgrow="ALWAYS" prefWidth="180" disable="true"
+                            style="-fx-background-color: linear-gradient(to right, #e74c3c, #c0392b); -fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold; -fx-padding: 15; -fx-background-radius: 10; -fx-cursor: hand;"/>
+                </HBox>
+
+                <Label fx:id="errorLabel" text="" style="-fx-text-fill: #e74c3c; -fx-font-size: 12px;" wrapText="true"/>
+            </VBox>
+        </HBox>
+    </center>
+
+</BorderPane>

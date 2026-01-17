@@ -47,7 +47,7 @@ public class ProfileScreen implements GCMClient.MessageHandler {
     @FXML
     private TextField phoneField;
     @FXML
-    private Label cardLabel;
+    private TextField cardField;
     @FXML
     private Label lastLoginLabel;
     @FXML
@@ -195,7 +195,8 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         totalSpentLabel.setText("$0.00");
         emailField.setPromptText("your@email.com");
         phoneField.setPromptText("+1 234 567 8900");
-        cardLabel.setText("**** **** **** ----");
+        cardField.setPromptText("Enter card number");
+        cardField.setText("**** **** **** ----");
         lastLoginLabel.setText("---");
         statusLabel.setText("");
         // Disable save for legacy login since no token
@@ -223,11 +224,21 @@ public class ProfileScreen implements GCMClient.MessageHandler {
 
         String email = emailField.getText().trim();
         String phone = phoneField.getText().trim();
+        String cardNumber = cardField.getText().trim();
 
         // Validate email
         if (!email.isEmpty() && !email.contains("@")) {
             showError("Please enter a valid email address");
             return;
+        }
+
+        // Validate card if provided
+        if (!cardNumber.isEmpty() && !cardNumber.startsWith("*")) {
+            // Basic validation - just checking it looks somewhat like a number
+            if (cardNumber.replaceAll("[^0-9]", "").length() < 12) {
+                showError("Card number must be at least 12 digits");
+                return;
+            }
         }
 
         try {
@@ -236,6 +247,10 @@ public class ProfileScreen implements GCMClient.MessageHandler {
                 updates.put("email", email);
             if (!phone.isEmpty())
                 updates.put("phone", phone);
+            if (!cardNumber.isEmpty() && !cardNumber.startsWith("*")) {
+                // Only update if it's a new number (not the masked one)
+                updates.put("card", cardNumber);
+            }
 
             String token = LoginController.currentSessionToken;
             Request request = new Request(MessageType.UPDATE_MY_PROFILE, updates, token);
@@ -336,9 +351,10 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         phoneField.setText(profile.getPhone() != null ? profile.getPhone() : "");
 
         if (profile.getCardLast4() != null && !profile.getCardLast4().isEmpty()) {
-            cardLabel.setText("**** **** **** " + profile.getCardLast4());
+            cardField.setText("**** **** **** " + profile.getCardLast4());
         } else {
-            cardLabel.setText("No card on file");
+            cardField.setText("");
+            cardField.setPromptText("Enter card number");
         }
 
         if (profile.getLastLoginAt() != null) {

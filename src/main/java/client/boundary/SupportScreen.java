@@ -238,46 +238,43 @@ public class SupportScreen {
         // Create form
         VBox content = new VBox(15);
         content.setPadding(new Insets(20));
-        content.setStyle("-fx-background-color: #1a1a2e;");
+        content.setStyle("-fx-background-color: #f8f9fa;");
 
         TextField subjectField = new TextField();
         subjectField.setPromptText("Subject");
-        subjectField
-                .setStyle("-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10;");
+        subjectField.setStyle("-fx-font-size: 14px; -fx-padding: 10;");
 
         TextArea messageArea = new TextArea();
         messageArea.setPromptText("Describe your issue...");
         messageArea.setPrefRowCount(5);
-        messageArea.setStyle("-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px;");
+        messageArea.setWrapText(true);
+        messageArea.setStyle("-fx-font-size: 14px;");
 
         ComboBox<SupportTicketDTO.Priority> priorityBox = new ComboBox<>();
         priorityBox.getItems().addAll(SupportTicketDTO.Priority.values());
         priorityBox.setValue(SupportTicketDTO.Priority.MEDIUM);
-        priorityBox.setStyle("-fx-background-color: #16213e; -fx-text-fill: white;");
+        priorityBox.setStyle("-fx-font-size: 13px;");
+
+        Label subjectLabel = new Label("Subject:");
+        subjectLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
+
+        Label descLabel = new Label("Description:");
+        descLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
+
+        Label priorityLabel = new Label("Priority:");
+        priorityLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
 
         content.getChildren().addAll(
-                new Label("Subject:") {
-                    {
-                        setStyle("-fx-text-fill: white;");
-                    }
-                },
+                subjectLabel,
                 subjectField,
-                new Label("Description:") {
-                    {
-                        setStyle("-fx-text-fill: white;");
-                    }
-                },
+                descLabel,
                 messageArea,
-                new Label("Priority:") {
-                    {
-                        setStyle("-fx-text-fill: white;");
-                    }
-                },
+                priorityLabel,
                 priorityBox);
 
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        dialog.getDialogPane().setStyle("-fx-background-color: #1a1a2e;");
+        dialog.getDialogPane().setPrefWidth(450);
 
         dialog.setResultConverter(btn -> {
             if (btn == ButtonType.OK) {

@@ -102,6 +102,7 @@ public class CustomerHandler {
         Map<String, String> updates = (Map<String, String>) request.getPayload();
         String email = updates.get("email");
         String phone = updates.get("phone");
+        String cardNumber = updates.get("card");
 
         // Validate email if provided
         if (email != null && !email.isEmpty()) {
@@ -115,7 +116,7 @@ public class CustomerHandler {
             }
         }
 
-        boolean success = UserDAO.updateProfile(session.userId, email, phone);
+        boolean success = UserDAO.updateProfile(session.userId, email, phone, cardNumber);
         if (success) {
             System.out.println("✓ Profile updated for: " + session.username);
             // Return updated profile

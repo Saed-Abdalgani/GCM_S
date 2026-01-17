@@ -65,9 +65,9 @@
                                    GridPane.rowIndex="0" GridPane.columnIndex="3"/>
                         
                         <Label text="Card:" style="-fx-text-fill: #888; -fx-font-size: 14px;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                        <Label fx:id="cardLabel" text="**** **** **** ----" 
-                               style="-fx-text-fill: #667eea; -fx-font-size: 14px; -fx-font-family: 'Consolas';" 
-                               GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                        <TextField fx:id="cardField" promptText="Enter new card number" 
+                                   style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10; -fx-background-radius: 5; -fx-font-family: 'Consolas';" 
+                                   GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                         
                         <Label text="Last Login:" style="-fx-text-fill: #888; -fx-font-size: 14px;" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
                         <Label fx:id="lastLoginLabel" text="---" style="-fx-text-fill: white; -fx-font-size: 14px;" GridPane.rowIndex="1" GridPane.columnIndex="3"/>

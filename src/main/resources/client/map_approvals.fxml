@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="client.boundary.MapApprovalsScreen"
+            style="-fx-background-color: #0f0f23;">
+    
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: linear-gradient(to right, #8e44ad, #9b59b6); -fx-padding: 15 25;">
+            <Label text="✅ Map Approvals" style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="statusLabel" text="Ready" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 13px;"/>
+            <Button fx:id="backButton" text="← Back" onAction="#handleBack"
+                    style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 15;"/>
+        </HBox>
+    </top>
+    
+    <left>
+        <VBox prefWidth="300" spacing="10" style="-fx-background-color: #1a1a2e; -fx-padding: 15;">
+            <Label text="Pending Requests" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+            <ListView fx:id="requestsListView" VBox.vgrow="ALWAYS"
+                      style="-fx-background-color: #0f0f23; -fx-control-inner-background: #0f0f23;"/>
+            <Button text="🔄 Refresh" onAction="#handleRefresh" prefWidth="300"
+                    style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 10; -fx-background-radius: 5;"/>
+        </VBox>
+    </left>
+    
+    <center>
+        <VBox fx:id="detailsPanel" visible="false" spacing="20" style="-fx-padding: 25;">
+            <!-- Header Info -->
+            <VBox spacing="10" style="-fx-background-color: #1a1a2e; -fx-padding: 20; -fx-background-radius: 10;">
+                <HBox spacing="15" alignment="CENTER_LEFT">
+                    <Label fx:id="mapNameLabel" text="Map Name" style="-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;"/>
+                    <Label fx:id="cityNameLabel" text="City Name" style="-fx-text-fill: #aaa; -fx-font-size: 14px;"/>
+                </HBox>
+                <HBox spacing="20">
+                    <Label fx:id="userLabel" text="By: User" style="-fx-text-fill: #3498db;"/>
+                    <Label fx:id="dateLabel" text="Date: YYYY-MM-DD" style="-fx-text-fill: #aaa;"/>
+                </HBox>
+            </VBox>
+            
+            <!-- Changes Summary -->
+            <VBox spacing="10" VBox.vgrow="ALWAYS" style="-fx-background-color: #1a1a2e; -fx-padding: 20; -fx-background-radius: 10;">
+                <Label text="Changes Summary" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                <TextArea fx:id="changesArea" editable="false" wrapText="true" VBox.vgrow="ALWAYS"
+                          style="-fx-control-inner-background: #0f0f23; -fx-text-fill: white; -fx-font-family: 'Consolas', monospace;"/>
+            </VBox>
+            
+            <!-- Action Buttons -->
+            <HBox spacing="20" alignment="CENTER_RIGHT">
+                <Button text="❌ Reject" onAction="#handleReject"
+                        style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 30; -fx-background-radius: 5;"/>
+                <Button text="✅ Approve &amp; Publish" onAction="#handleApprove"
+                        style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 30; -fx-background-radius: 5;"/>
+            </HBox>
+        </VBox>
+    </center>
+    
+</BorderPane>

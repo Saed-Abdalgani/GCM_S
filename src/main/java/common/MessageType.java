@@ -214,5 +214,15 @@ public enum MessageType {
 
     // ==================== REPORTS (Phase 10) ====================
     /** Get activity report stats */
-    GET_ACTIVITY_REPORT
+    GET_ACTIVITY_REPORT,
+
+    // ==================== MAP EDIT APPROVALS ====================
+    /** List all pending map edit requests */
+    GET_PENDING_MAP_EDITS,
+
+    /** Approve a map edit request */
+    APPROVE_MAP_EDIT,
+
+    /** Reject a map edit request */
+    REJECT_MAP_EDIT
 }

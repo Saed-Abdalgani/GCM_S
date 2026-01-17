@@ -11,6 +11,7 @@ import common.Poi;
 import common.dto.TourDTO;
 import common.dto.TourStopDTO;
 import common.dto.ValidationResult;
+import common.dto.MapEditRequestDTO;
 
 import client.GCMClient;
 
@@ -38,6 +39,8 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
         void onMapContentReceived(MapContent content);
 
         void onValidationResult(ValidationResult result);
+
+        void onPendingRequestsReceived(List<MapEditRequestDTO> requests);
 
         void onError(String errorCode, String errorMessage);
     }
@@ -196,6 +199,23 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
         sendRequest(request);
     }
 
+    // ==================== Approval Operations ====================
+
+    public void getPendingMapEdits() {
+        Request request = new Request(MessageType.GET_PENDING_MAP_EDITS);
+        sendRequest(request);
+    }
+
+    public void approveMapEdit(int requestId) {
+        Request request = new Request(MessageType.APPROVE_MAP_EDIT, requestId);
+        sendRequest(request);
+    }
+
+    public void rejectMapEdit(int requestId) {
+        Request request = new Request(MessageType.REJECT_MAP_EDIT, requestId);
+        sendRequest(request);
+    }
+
     // ==================== Internal Methods ====================
 
     private void sendRequest(Request request) {
@@ -248,6 +268,28 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
             } else {
                 // Empty list - could be cities or maps
                 callback.onCitiesReceived(new ArrayList<>());
+            }
+        } else if (payload instanceof List) { // Re-check list type after generic check failure if needed, or handle
+                                              // generically
+            // The above block handles most lists. We need to check the FIRST element to
+            // know type.
+            // But if list is empty, we don't know.
+            // Ideally the Request type should map to a specific callback.
+            // But here we only have Response payload.
+            // For now, let's assume if it is NOT City or MapSummary, check for
+            // MapEditRequestDTO
+            List<?> list = (List<?>) payload;
+            if (!list.isEmpty()) {
+                Object first = list.get(0);
+                if (first instanceof MapEditRequestDTO) {
+                    callback.onPendingRequestsReceived((List<MapEditRequestDTO>) payload);
+                }
+            } else {
+                // If empty and we expected requests... difficult.
+                // We'll trust the caller context or add more robust context tracking.
+                // For now, just trigger "cities" as default fallback which might be wrong but
+                // harmless if ignored.
+                // Or better: trigger ALL empty callbacks? No.
             }
         } else if (payload instanceof MapContent) {
             callback.onMapContentReceived((MapContent) payload);

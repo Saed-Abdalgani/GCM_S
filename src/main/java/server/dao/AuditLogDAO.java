@@ -11,6 +11,7 @@ public class AuditLogDAO {
     // Action constants
     public static final String ACTION_MAP_UPDATED = "MAP_UPDATED";
     public static final String ACTION_VERSION_CREATED = "VERSION_CREATED";
+    public static final String ACTION_VERSION_PUBLISHED = "VERSION_PUBLISHED";
     public static final String ACTION_VERSION_APPROVED = "VERSION_APPROVED";
     public static final String ACTION_VERSION_REJECTED = "VERSION_REJECTED";
     public static final String ACTION_CITY_CREATED = "CITY_CREATED";

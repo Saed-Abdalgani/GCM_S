@@ -187,7 +187,8 @@ public class PricingScreen implements GCMClient.MessageHandler {
             SubmitPricingRequest payload = new SubmitPricingRequest(
                     selectedCity.getCityId(), newPrice, reason);
             String token = LoginController.currentSessionToken;
-            Request request = new Request(MessageType.SUBMIT_PRICING_REQUEST, payload, token);
+            int userId = LoginController.currentUserId;
+            Request request = new Request(MessageType.SUBMIT_PRICING_REQUEST, payload, token, userId);
             client.sendToServer(request);
         } catch (IOException e) {
             showError("Failed to submit pricing request");

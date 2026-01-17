@@ -98,7 +98,7 @@
                             <VBox spacing="3">
                                 <Label text="Description" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
                                 <TextArea fx:id="poiDescArea" prefRowCount="2" promptText="Short explanation"
-                                          style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                                          style="-fx-control-inner-background: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
                             </VBox>
                             <HBox spacing="10" alignment="CENTER_RIGHT">
                                 <Button text="Cancel" onAction="#handleCancelPoiEdit"
@@ -155,7 +155,7 @@
                             <VBox spacing="3">
                                 <Label text="Description" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
                                 <TextArea fx:id="tourDescArea" prefRowCount="2" promptText="Tour description"
-                                          style="-fx-background-color: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
+                                          style="-fx-control-inner-background: #0f0f23; -fx-text-fill: white; -fx-font-size: 13px;"/>
                             </VBox>
                             <HBox spacing="10" alignment="CENTER_RIGHT">
                                 <Button text="Cancel" onAction="#handleCancelTourEdit"
@@ -181,7 +181,7 @@
                         <VBox spacing="3">
                             <Label text="Description" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
                             <TextArea fx:id="mapDescArea" prefRowCount="4" promptText="Map description"
-                                      style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 14px;"/>
+                                      style="-fx-control-inner-background: #16213e; -fx-text-fill: white; -fx-font-size: 14px;"/>
                         </VBox>
                         <HBox spacing="10" alignment="CENTER_RIGHT">
                             <Button text="Save Map Info" onAction="#handleSaveMapInfo"

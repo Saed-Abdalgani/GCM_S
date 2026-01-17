@@ -130,19 +130,15 @@ public class PurchaseHandler {
             return Response.error(request, Response.ERR_VALIDATION, "Invalid purchase type");
         }
 
+        boolean isRenewal = PurchaseDAO.hasPreviousSubscription(userId, purchase.getCityId());
         boolean success = PurchaseDAO.purchaseSubscription(userId, purchase.getCityId(), purchase.getMonths());
 
         if (success) {
-            // Check if renewal or new? For now, simplistic approach:
-            // Ideally we'd check if user had a previous sub.
-            // Let's assume for now any sub purchase is a "subscription" event.
-            // Requirement asks for "#subscriptions" AND "#renewals".
-            // Implementation: We will count ALL as subscriptions for now,
-            // unless we can easily distinguish.
-            // TODO: Refine renewal logic if PurchaseDAO exposes it.
-            // For now, logging as SUBSCRIPTION.
-            server.dao.DailyStatsDAO.increment(purchase.getCityId(),
-                    server.dao.DailyStatsDAO.Metric.PURCHASE_SUBSCRIPTION);
+            // Log as RENEWAL if user had previous subscription, otherwise SUBSCRIPTION
+            server.dao.DailyStatsDAO.Metric metric = isRenewal ? server.dao.DailyStatsDAO.Metric.RENEWAL
+                    : server.dao.DailyStatsDAO.Metric.PURCHASE_SUBSCRIPTION;
+
+            server.dao.DailyStatsDAO.increment(purchase.getCityId(), metric);
 
             LocalDate expiry = LocalDate.now().plusMonths(purchase.getMonths());
             return Response.success(request, new PurchaseResponse(true, "Subscription successful!",

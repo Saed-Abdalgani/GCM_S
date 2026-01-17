@@ -92,6 +92,7 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
     private Poi editingPoi;
     private TourDTO editingTour;
     private boolean hasUnsavedChanges = false;
+    private int pendingSelectCityId = -1;
 
     /**
      * Initialize the controller.
@@ -119,12 +120,31 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         }
 
         // City selection listener
-        cityComboBox.setOnAction(e -> {
-            selectedCity = cityComboBox.getValue();
+        cityComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            System.out.println("DEBUG: City selection changed from " + (oldVal != null ? oldVal.getName() : "null") +
+                    " to " + (newVal != null ? newVal.getName() : "null"));
+
+            selectedCity = newVal;
             if (selectedCity != null) {
+                System.out.println(
+                        "DEBUG: Selected city ID: " + selectedCity.getId() + ", Maps: " + selectedCity.getMapCount());
                 cityPriceField.setText(String.valueOf(selectedCity.getPrice()));
                 control.getMapsForCity(selectedCity.getId());
+
+                // Force UI state update
+                createMapBtn.setDisable(false);
+                setStatus("Selected: " + selectedCity.getName());
+            } else {
+                System.out.println("DEBUG: Selection cleared");
+                createMapBtn.setDisable(true);
+                mapsListView.getItems().clear();
+                setStatus("No city selected");
             }
+        });
+
+        // Keep the ActionEvent handler just in case, but rely on listener
+        cityComboBox.setOnAction(e -> {
+            System.out.println("DEBUG: ComboBox ActionEvent triggered");
         });
 
         // Map selection listener
@@ -132,6 +152,8 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
             selectedMap = newMap;
             if (selectedMap != null) {
                 control.getMapContent(selectedMap.getId());
+            } else {
+                clearMapContent();
             }
         });
 
@@ -155,20 +177,56 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         setStatus("Ready - Select a city to begin");
     }
 
+    private void clearMapContent() {
+        currentMapContent = null;
+
+        // Clear Lists
+        poisListView.getItems().clear();
+        toursListView.getItems().clear();
+        tourStopsListView.getItems().clear();
+
+        // Clear Fields
+        mapNameField.clear();
+        mapDescArea.clear();
+
+        // Clear Forms
+        handleCancelPoiEdit();
+        handleCancelTourEdit();
+
+        // Hide/Reset Info
+        tourStopsSection.setVisible(false);
+
+        setStatus("No map selected");
+    }
+
     private void setupCellFactories() {
         // City combo display
         cityComboBox.setButtonCell(new ListCell<CityDTO>() {
             @Override
             protected void updateItem(CityDTO city, boolean empty) {
                 super.updateItem(city, empty);
-                setText(empty || city == null ? "" : city.getName() + " (" + city.getMapCount() + " maps)");
+                if (empty || city == null) {
+                    setText(null);
+                    System.out.println("DEBUG: ButtonCell update - empty/null");
+                } else {
+                    String text = city.getName() + " (" + city.getMapCount() + " maps)";
+                    setText(text);
+                    setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
+                    System.out.println("DEBUG: ButtonCell update - " + text);
+                }
             }
         });
         cityComboBox.setCellFactory(lv -> new ListCell<CityDTO>() {
             @Override
             protected void updateItem(CityDTO city, boolean empty) {
                 super.updateItem(city, empty);
-                setText(empty || city == null ? "" : city.getName() + " (" + city.getMapCount() + " maps)");
+                if (empty || city == null) {
+                    setText(null);
+                } else {
+                    setText(city.getName() + " (" + city.getMapCount() + " maps)");
+                    // Dropdown list has white background, so use black text
+                    setStyle("-fx-text-fill: black; -fx-font-size: 14px;");
+                }
             }
         });
 
@@ -280,6 +338,8 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
 
     @FXML
     private void handleCreateMap() {
+        System.out.println("DEBUG: handleCreateMap called. SelectedCity: "
+                + (selectedCity != null ? selectedCity.getName() : "null"));
         if (selectedCity == null) {
             showError("Please select a city first");
             return;
@@ -601,7 +661,28 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
     @Override
     public void onCitiesReceived(List<CityDTO> cities) {
         Platform.runLater(() -> {
+            // Save current selection ID if no pending selection
+            int targetId = pendingSelectCityId;
+            if (targetId == -1 && selectedCity != null) {
+                targetId = selectedCity.getId();
+            }
+
             cityComboBox.setItems(FXCollections.observableArrayList(cities));
+
+            // Restore selection
+            if (targetId != -1) {
+                for (CityDTO c : cities) {
+                    if (c.getId() == targetId) {
+                        cityComboBox.getSelectionModel().select(c);
+                        // Manually update selectedCity just in case
+                        selectedCity = c;
+                        control.getMapsForCity(selectedCity.getId());
+                        break;
+                    }
+                }
+            }
+
+            pendingSelectCityId = -1; // Reset
             setStatus("Loaded " + cities.size() + " cities");
         });
     }
@@ -610,7 +691,9 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
     public void onMapsReceived(List<MapSummary> maps) {
         Platform.runLater(() -> {
             mapsListView.setItems(FXCollections.observableArrayList(maps));
-            setStatus("Loaded " + maps.size() + " maps for " + selectedCity.getName());
+            if (selectedCity != null) {
+                setStatus("Loaded " + maps.size() + " maps for " + selectedCity.getName());
+            }
         });
     }
 
@@ -639,6 +722,11 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
             if (result.isValid()) {
                 setStatus("✓ " + result.getSuccessMessage());
 
+                // Auto-select newly created city
+                if (result.getCreatedCityId() != null && result.getCreatedCityId() > 0) {
+                    pendingSelectCityId = result.getCreatedCityId();
+                }
+
                 // Refresh data
                 if (selectedCity != null) {
                     control.getMapsForCity(selectedCity.getId());
@@ -658,6 +746,11 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         Platform.runLater(() -> {
             showError(errorCode + ": " + errorMessage);
         });
+    }
+
+    @Override
+    public void onPendingRequestsReceived(List<MapEditRequestDTO> requests) {
+        // Not used in this screen
     }
 
     // ==================== Helpers ====================

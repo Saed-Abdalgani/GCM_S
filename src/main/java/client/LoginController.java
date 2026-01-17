@@ -9,8 +9,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
 
 import java.io.IOException;
 
@@ -280,31 +278,8 @@ public class LoginController implements GCMClient.MessageHandler {
 
     // Reuse existing navigation methods...
     private void navigateToMainPage() {
-        if (currentUserRole == UserRole.EMPLOYEE || currentUserRole == UserRole.MANAGER
-                || currentUserRole == UserRole.SUPPORT_AGENT) {
-            // Privileged User: Offer choice
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Workspace Selection");
-            alert.setHeaderText("Select Workspace");
-            alert.setContentText("Where would you like to go?");
-
-            ButtonType btnDashboard = new ButtonType("User Dashboard");
-            ButtonType btnEditor = new ButtonType("Content Management Portal");
-
-            alert.getButtonTypes().setAll(btnDashboard, btnEditor, ButtonType.CANCEL);
-
-            alert.showAndWait().ifPresent(type -> {
-                if (type == btnDashboard) {
-                    loadDashboard();
-                } else if (type == btnEditor) {
-                    loadContentPortal();
-                }
-            });
-
-        } else {
-            // Standard User: Go to Dashboard directly
-            loadDashboard();
-        }
+        // Go to Dashboard directly for all users
+        loadDashboard();
     }
 
     // ... loadDashboard(), loadContentPortal(), handleBrowseCatalog(),
@@ -353,21 +328,6 @@ public class LoginController implements GCMClient.MessageHandler {
             stage.setTitle("GCM Dashboard - " + currentUsername);
             stage.setWidth(1000);
             stage.setHeight(700);
-            stage.centerOnScreen();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadContentPortal() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/map_editor.fxml"));
-            Parent root = loader.load();
-            Stage stage = (Stage) loginButton.getScene().getWindow();
-            stage.setScene(new Scene(root));
-            stage.setTitle("GCM Content Management - " + currentUsername);
-            stage.setWidth(1200);
-            stage.setHeight(800);
             stage.centerOnScreen();
         } catch (IOException e) {
             e.printStackTrace();

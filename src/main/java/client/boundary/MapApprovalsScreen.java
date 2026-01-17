@@ -1,0 +1,237 @@
+package client.boundary;
+
+import client.control.ContentManagementControl;
+import common.dto.*;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
+import java.io.IOException;
+import java.util.List;
+
+public class MapApprovalsScreen implements ContentManagementControl.ContentCallback {
+
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private Button backButton;
+    @FXML
+    private ListView<MapEditRequestDTO> requestsListView;
+    @FXML
+    private VBox detailsPanel;
+    @FXML
+    private Label mapNameLabel;
+    @FXML
+    private Label cityNameLabel;
+    @FXML
+    private Label userLabel;
+    @FXML
+    private Label dateLabel;
+    @FXML
+    private TextArea changesArea;
+
+    private ContentManagementControl control;
+    private MapEditRequestDTO selectedRequest;
+
+    @FXML
+    public void initialize() {
+        try {
+            control = new ContentManagementControl("localhost", 5555);
+            control.setCallback(this);
+            setupListView();
+            handleRefresh();
+        } catch (IOException e) {
+            showError("Connection failed");
+            e.printStackTrace();
+        }
+    }
+
+    private void setupListView() {
+        requestsListView.setCellFactory(lv -> new ListCell<MapEditRequestDTO>() {
+            @Override
+            protected void updateItem(MapEditRequestDTO item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("-fx-control-inner-background: #0f0f23;");
+                } else {
+                    setText((item.getMapName() != null ? item.getMapName() : "[New Map]") +
+                            " (" + item.getCityName() + ") - by " + item.getUsername());
+                    setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-control-inner-background: #0f0f23;");
+                }
+            }
+        });
+
+        requestsListView.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> {
+            if (newVal != null) {
+                showDetails(newVal);
+            }
+        });
+    }
+
+    private void showDetails(MapEditRequestDTO request) {
+        selectedRequest = request;
+        detailsPanel.setVisible(true);
+
+        mapNameLabel.setText(request.getMapName() != null ? request.getMapName() : "New Map Request");
+        cityNameLabel.setText(request.getCityName());
+        userLabel.setText("Submitted by: " + request.getUsername());
+        dateLabel.setText("Date: " + (request.getCreatedAt() != null ? request.getCreatedAt().toString() : "Unknown"));
+
+        changesArea.setText(generateSummary(request.getChanges()));
+    }
+
+    private String generateSummary(MapChanges changes) {
+        if (changes == null)
+            return "No changes data available.";
+
+        StringBuilder sb = new StringBuilder();
+        if (changes.isCreateNewCity()) {
+            sb.append("• Creating new city: ").append(changes.getNewCityName())
+                    .append("\n  Price: ").append(changes.getNewCityPrice()).append("\n\n");
+        }
+
+        if (changes.getNewMapName() != null) {
+            sb.append("• Updating/Creating Map Info:\n  Name: ").append(changes.getNewMapName())
+                    .append("\n  Desc: ").append(changes.getNewMapDescription()).append("\n\n");
+        }
+
+        if (!changes.getAddedPois().isEmpty()) {
+            sb.append("• Added ").append(changes.getAddedPois().size()).append(" POIs:\n");
+            changes.getAddedPois().forEach(
+                    p -> sb.append("  + ").append(p.getName()).append(" (").append(p.getCategory()).append(")\n"));
+            sb.append("\n");
+        }
+
+        if (!changes.getUpdatedPois().isEmpty()) {
+            sb.append("• Updated ").append(changes.getUpdatedPois().size()).append(" POIs\n\n");
+        }
+
+        if (!changes.getDeletedPoiIds().isEmpty()) {
+            sb.append("• Deleted ").append(changes.getDeletedPoiIds().size()).append(" POIs\n\n");
+        }
+
+        if (!changes.getAddedTours().isEmpty()) {
+            sb.append("• Added ").append(changes.getAddedTours().size()).append(" Tours\n\n");
+        }
+
+        // Add more details as needed
+
+        if (sb.length() == 0)
+            return "No visible changes recorded.";
+        return sb.toString();
+    }
+
+    @FXML
+    private void handleRefresh() {
+        setStatus("Refreshing...");
+        control.getPendingMapEdits();
+    }
+
+    @FXML
+    private void handleApprove() {
+        if (selectedRequest == null)
+            return;
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirm Approval");
+        confirm.setHeaderText("Approve and Publish?");
+        confirm.setContentText("This will apply changes immediately and create a new version.");
+
+        confirm.showAndWait().ifPresent(type -> {
+            if (type == ButtonType.OK) {
+                setStatus("Approving...");
+                control.approveMapEdit(selectedRequest.getId());
+            }
+        });
+    }
+
+    @FXML
+    private void handleReject() {
+        if (selectedRequest == null)
+            return;
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirm Rejection");
+        confirm.setHeaderText("Reject Request?");
+
+        confirm.showAndWait().ifPresent(type -> {
+            if (type == ButtonType.OK) {
+                setStatus("Rejecting...");
+                control.rejectMapEdit(selectedRequest.getId());
+            }
+        });
+    }
+
+    @FXML
+    private void handleBack() {
+        if (control != null)
+            control.disconnect();
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/dashboard.fxml"));
+            Parent root = loader.load();
+            Stage stage = (Stage) backButton.getScene().getWindow();
+            stage.setScene(new Scene(root));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onPendingRequestsReceived(List<MapEditRequestDTO> requests) {
+        Platform.runLater(() -> {
+            requestsListView.setItems(FXCollections.observableArrayList(requests));
+            setStatus("Loaded " + requests.size() + " pending requests");
+            if (requests.isEmpty()) {
+                detailsPanel.setVisible(false);
+            }
+        });
+    }
+
+    @Override
+    public void onValidationResult(ValidationResult result) {
+        Platform.runLater(() -> {
+            if (result.isValid()) {
+                setStatus("Success: " + result.getSuccessMessage());
+                handleRefresh();
+                detailsPanel.setVisible(false);
+                selectedRequest = null;
+            } else {
+                showError(result.getErrorSummary());
+            }
+        });
+    }
+
+    @Override
+    public void onCitiesReceived(List<CityDTO> cities) {
+    }
+
+    @Override
+    public void onMapsReceived(List<MapSummary> maps) {
+    }
+
+    @Override
+    public void onMapContentReceived(MapContent content) {
+    }
+
+    @Override
+    public void onError(String errorCode, String errorMessage) {
+        Platform.runLater(() -> showError(errorCode + ": " + errorMessage));
+    }
+
+    private void setStatus(String msg) {
+        statusLabel.setText(msg);
+        statusLabel.setStyle("-fx-text-fill: white;");
+    }
+
+    private void showError(String msg) {
+        statusLabel.setText("⚠️ " + msg);
+        statusLabel.setStyle("-fx-text-fill: #e74c3c;");
+    }
+}

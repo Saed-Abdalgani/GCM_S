@@ -84,6 +84,22 @@ public class PurchaseDAO {
     }
 
     /**
+     * Check if user has any previous subscription for this city.
+     */
+    public static boolean hasPreviousSubscription(int userId, int cityId) {
+        String sql = "SELECT 1 FROM subscriptions WHERE user_id = ? AND city_id = ? LIMIT 1";
+        try (Connection conn = DBConnector.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, cityId);
+            return stmt.executeQuery().next();
+        } catch (SQLException e) {
+            System.err.println("Error checking previous subscription: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Record a subscription purchase.
      */
     public static boolean purchaseSubscription(int userId, int cityId, int months) {
@@ -407,8 +423,8 @@ public class PurchaseDAO {
                 JOIN users u ON s.user_id = u.id
                 JOIN cities c ON s.city_id = c.id
                 WHERE s.is_active = TRUE
-                  AND s.end_date > CURDATE()
-                  AND DATEDIFF(s.end_date, CURDATE()) <= ?
+                AND s.end_date > CURDATE()
+                AND DATEDIFF(s.end_date, CURDATE()) <= ?
                 ORDER BY s.end_date ASC
                 """;
 

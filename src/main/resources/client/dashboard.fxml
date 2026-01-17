@@ -46,8 +46,8 @@
                             <Label text="Search maps" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
                         </VBox>
                         
-                        <!-- Map Editor Card -->
-                        <VBox spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                        <!-- Map Editor Card (hidden from customers) -->
+                        <VBox fx:id="mapEditorCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
                               style="-fx-background-color: linear-gradient(to bottom right, #e74c3c, #c0392b); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
                               onMouseClicked="#openMapEditor">
                             <Label text="✏️" style="-fx-font-size: 32px;"/>
@@ -56,7 +56,7 @@
                         </VBox>
                         
                         <!-- My Purchases Card -->
-                        <VBox spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                        <VBox fx:id="myPurchasesCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
                               style="-fx-background-color: linear-gradient(to bottom right, #27ae60, #1e8449); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
                               onMouseClicked="#openMyPurchases">
                             <Label text="🛒" style="-fx-font-size: 32px;"/>
@@ -117,6 +117,15 @@
                             <Label text="Agent Console" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
                             <Label text="Manage tickets" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
                         </VBox>
+                        
+                        <!-- Edit Approvals Card (visible for managers) -->
+                        <VBox fx:id="editApprovalsCard" spacing="10" alignment="CENTER" prefWidth="180" prefHeight="130"
+                              style="-fx-background-color: linear-gradient(to bottom right, #fd79a8, #e84393); -fx-background-radius: 15; -fx-padding: 20; -fx-cursor: hand;"
+                              onMouseClicked="#openEditApprovals" visible="false" managed="false">
+                            <Label text="✅" style="-fx-font-size: 32px;"/>
+                            <Label text="Edit Approvals" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <Label text="Review map edits" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 11px;"/>
+                        </VBox>
                     </HBox>
                 </VBox>
                 
@@ -145,8 +154,8 @@
                             </HBox>
                         </VBox>
                         
-                        <!-- Update Price -->
-                        <VBox spacing="10" style="-fx-background-color: #1a1a2e; -fx-background-radius: 10; -fx-padding: 20;">
+                        <!-- Update Price (visible to employees/managers only) -->
+                        <VBox fx:id="updatePriceCard" spacing="10" style="-fx-background-color: #1a1a2e; -fx-background-radius: 10; -fx-padding: 20;" visible="false" managed="false">
                             <Label text="Update City Price" style="-fx-text-fill: #e67e22; -fx-font-size: 14px; -fx-font-weight: bold;"/>
                             <HBox spacing="10">
                                 <TextField fx:id="updateIdField" promptText="City ID" prefWidth="80"

@@ -48,11 +48,17 @@ public class DashboardScreen implements GCMClient.MessageHandler {
     @FXML
     private VBox agentConsoleCard;
     @FXML
-    private VBox reportsCard;
+    private VBox editApprovalsCard;
     @FXML
     private TextField updateIdField;
     @FXML
     private TextField priceField;
+    @FXML
+    private VBox updatePriceCard;
+    @FXML
+    private VBox mapEditorCard;
+    @FXML
+    private VBox myPurchasesCard;
 
     private GCMClient client;
 
@@ -63,23 +69,43 @@ public class DashboardScreen implements GCMClient.MessageHandler {
         // Set user info
         updateUserInfo();
 
+        LoginController.UserRole role = LoginController.currentUserRole;
+
+        // My Purchases only visible to CUSTOMER
+        if (role != LoginController.UserRole.CUSTOMER) {
+            if (myPurchasesCard != null) {
+                myPurchasesCard.setVisible(false);
+                myPurchasesCard.setManaged(false);
+            }
+        }
+
         // Show admin card for managers
         if (LoginController.currentUserRole == LoginController.UserRole.MANAGER) {
             adminCustomersCard.setVisible(true);
             adminCustomersCard.setManaged(true);
         }
 
-        // Show pricing cards based on role
-        LoginController.UserRole role = LoginController.currentUserRole;
-        if (role == LoginController.UserRole.MANAGER || role == LoginController.UserRole.EMPLOYEE) {
-            // ContentManager and CompanyManager can access pricing
+        // Hide Map Editor from customers and anonymous users
+        if (role == LoginController.UserRole.CUSTOMER || role == LoginController.UserRole.ANONYMOUS) {
+            if (mapEditorCard != null) {
+                mapEditorCard.setVisible(false);
+                mapEditorCard.setManaged(false);
+            }
+        }
+
+        // Show pricing card for employees only (they submit price change requests)
+        if (role == LoginController.UserRole.EMPLOYEE) {
             pricingCard.setVisible(true);
             pricingCard.setManaged(true);
         }
         if (role == LoginController.UserRole.MANAGER) {
-            // Only CompanyManager can approve prices
+            // Only CompanyManager can approve prices and update prices directly
             pricingApprovalCard.setVisible(true);
             pricingApprovalCard.setManaged(true);
+            if (updatePriceCard != null) {
+                updatePriceCard.setVisible(true);
+                updatePriceCard.setManaged(true);
+            }
         }
 
         if (role == LoginController.UserRole.SUPPORT_AGENT) {
@@ -88,11 +114,11 @@ public class DashboardScreen implements GCMClient.MessageHandler {
             agentConsoleCard.setManaged(true);
         }
 
-        // Show reports for Managers
+        // Show edit approvals for Managers
         if (role == LoginController.UserRole.MANAGER) {
-            if (reportsCard != null) {
-                reportsCard.setVisible(true);
-                reportsCard.setManaged(true);
+            if (editApprovalsCard != null) {
+                editApprovalsCard.setVisible(true);
+                editApprovalsCard.setManaged(true);
             }
         }
 
@@ -159,9 +185,11 @@ public class DashboardScreen implements GCMClient.MessageHandler {
         }
 
         if (role == LoginController.UserRole.CUSTOMER) {
-            showAlert(Alert.AlertType.INFORMATION, "Request Mode", "You are in Request Mode",
-                    "As a customer, your changes will be submitted as requests.\n" +
-                            "An employee will review and approve your changes.");
+            showAlert(Alert.AlertType.INFORMATION, "Map Editor Not Available", "Employee Access Only",
+                    "Map editing is only available to employees.\n\n" +
+                            "If you found an error in a map, please use the Support Center " +
+                            "to report the issue and our team will correct it.");
+            return;
         }
 
         navigateTo("/client/map_editor.fxml", "GCM - Map Editor", 1200, 800);
@@ -279,36 +307,14 @@ public class DashboardScreen implements GCMClient.MessageHandler {
     }
 
     @FXML
-    private void openReportsScreen(MouseEvent event) {
+    private void openEditApprovals(MouseEvent event) {
         if (LoginController.currentUserRole != LoginController.UserRole.MANAGER) {
             showAlert(Alert.AlertType.WARNING, "Access Denied", "Manager Access Required",
-                    "Only managers can access activity reports.");
+                    "Only managers can approve edit requests.");
             return;
         }
 
-        // Pass this dashboard controller to the reports controller if needed
-        // But navigateTo creates a fresh scene.
-        // If we want to keep "back" functionality, we might need a different nav
-        // approach.
-        // For now, standard navigateTo.
-
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/reports.fxml"));
-            Parent root = loader.load();
-
-            ReportsController controller = loader.getController();
-            controller.setClient(client);
-            // controller.setDashboardController(this); // If we want to pass context
-
-            Stage stage = (Stage) resultArea.getScene().getWindow();
-            stage.setScene(new Scene(root));
-            stage.setTitle("Activity Reports");
-            stage.centerOnScreen();
-
-        } catch (IOException e) {
-            resultArea.setText("Error: Could not navigate to Reports.");
-            e.printStackTrace();
-        }
+        navigateTo("/client/map_approvals.fxml", "Edit Request Approvals", 1150, 750);
     }
 
     private void showNotificationsDialog() {

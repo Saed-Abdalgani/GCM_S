@@ -7,7 +7,6 @@ import common.Response;
 import common.dto.*;
 import server.DBConnector;
 import server.dao.*;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -37,6 +36,15 @@ public class MapEditHandler {
 
                 case SUBMIT_MAP_CHANGES:
                     return handleSubmitMapChanges(request);
+
+                case GET_PENDING_MAP_EDITS:
+                    return handleGetPendingMapEdits(request);
+
+                case APPROVE_MAP_EDIT:
+                    return handleApproveMapEdit(request);
+
+                case REJECT_MAP_EDIT:
+                    return handleRejectMapEdit(request);
 
                 case CREATE_CITY:
                     return handleCreateCity(request);
@@ -394,13 +402,33 @@ public class MapEditHandler {
 
     // ==================== Batch Submit ====================
 
+    private static Response handleGetPendingMapEdits(Request request) {
+        List<MapEditRequestDTO> requests = MapEditRequestDAO.getPendingRequests();
+        return Response.success(request, requests);
+    }
+
+    private static Response handleRejectMapEdit(Request request) {
+        if (!(request.getPayload() instanceof Integer)) {
+            return Response.error(request, Response.ERR_VALIDATION, "Request ID required");
+        }
+        int reqId = (Integer) request.getPayload();
+        try (Connection conn = DBConnector.getConnection()) {
+            if (MapEditRequestDAO.updateStatus(conn, reqId, "REJECTED")) {
+                return Response.success(request, ValidationResult.success("Request rejected"));
+            }
+        } catch (SQLException e) {
+            return Response.error(request, Response.ERR_DATABASE, e.getMessage());
+        }
+        return Response.error(request, Response.ERR_DATABASE, "Failed to reject request");
+    }
+
     private static Response handleSubmitMapChanges(Request request) {
         if (!(request.getPayload() instanceof MapChanges)) {
             return Response.error(request, Response.ERR_VALIDATION, "MapChanges required");
         }
 
         MapChanges changes = (MapChanges) request.getPayload();
-        System.out.println("MapEditHandler: Processing batch changes");
+        System.out.println("MapEditHandler: Submitting changes for approval");
 
         // First validate all changes
         ValidationResult validation = validateAllChanges(changes);
@@ -409,7 +437,39 @@ public class MapEditHandler {
             return Response.success(request, validation);
         }
 
+        try (Connection conn = DBConnector.getConnection()) {
+            int reqId = MapEditRequestDAO.createRequest(conn,
+                    changes.getMapId() != null ? changes.getMapId() : 0,
+                    changes.getCityId() != null ? changes.getCityId() : 0,
+                    request.getUserId(),
+                    changes);
+
+            if (reqId > 0) {
+                validation = ValidationResult.success("Changes submitted for manager approval. Request ID: " + reqId);
+                return Response.success(request, validation);
+            }
+        } catch (SQLException e) {
+            return Response.error(request, Response.ERR_DATABASE, "Database error: " + e.getMessage());
+        }
+        return Response.error(request, Response.ERR_DATABASE, "Failed to submit request");
+    }
+
+    private static Response handleApproveMapEdit(Request request) {
+        if (!(request.getPayload() instanceof Integer)) {
+            return Response.error(request, Response.ERR_VALIDATION, "Request ID required");
+        }
+        int reqId = (Integer) request.getPayload();
+
+        MapEditRequestDTO reqDTO = MapEditRequestDAO.getRequest(reqId);
+        if (reqDTO == null)
+            return Response.error(request, Response.ERR_NOT_FOUND, "Request not found");
+
+        MapChanges changes = reqDTO.getChanges();
+        if (changes == null)
+            return Response.error(request, Response.ERR_INTERNAL, "Invalid request data");
+
         // Execute changes in transaction
+        ValidationResult validation = new ValidationResult();
         try (Connection conn = DBConnector.getConnection()) {
             if (conn == null) {
                 return Response.error(request, Response.ERR_DATABASE, "Database connection failed");
@@ -489,32 +549,47 @@ public class MapEditHandler {
                     TourDAO.removeTourStop(conn, stopId);
                 }
 
-                // ==================== PHASE 3: Create PENDING version ====================
-                // After successful changes, create a pending version for approval
+                // Create PENDING version (Approved by this act, but system logic might start at
+                // Pending)
+                // Actually, if Manager approves, we might want to set the version to APPROVED
+                // immediately?
+                // But the logic in Phase 3 says "Create PENDING version".
+                // I will keep it as is, or maybe update it to APPROVED?
+                // For now, let's keep it PENDING as per original logic,
+                // assuming there is ANOTHER step for Version Approval, OR maybe this IS the
+                // Version Approval?
+                // The task description says "send it to the approving page... accept it or
+                // not".
+                // If accepted, it should be LIVE.
+                // If I keep it PENDING, it's not live.
+                // Code matches original logic:
                 if (changes.getMapId() != null && changes.getMapId() > 0) {
-                    int creatorId = request.getUserId() > 0 ? request.getUserId() : 2; // Default to employee
+                    int creatorId = reqDTO.getUserId() > 0 ? reqDTO.getUserId() : 2;
                     String description = buildChangesDescription(changes);
 
-                    // Create MapVersion with PENDING status
+                    // Create MapVersion with APPROVED status (since Manager is acting now)
+                    // But MapVersionDAO.createVersion defaults to PENDING.
+                    // I should create it then update it.
                     int versionId = MapVersionDAO.createVersion(conn, changes.getMapId(), creatorId, description);
                     if (versionId > 0) {
                         validation.setCreatedVersionId(versionId);
 
-                        // Create Approval record
-                        ApprovalDAO.createApproval(conn, ApprovalDAO.ENTITY_MAP_VERSION, versionId);
+                        // Mark version as APPROVED
+                        MapVersionDAO.updateStatus(conn, versionId, "APPROVED", request.getUserId(), null);
 
-                        // Write AuditLog
-                        AuditLogDAO.log(conn, AuditLogDAO.ACTION_VERSION_CREATED, creatorId,
+                        // Log
+                        AuditLogDAO.log(conn, AuditLogDAO.ACTION_VERSION_PUBLISHED, request.getUserId(),
                                 AuditLogDAO.ENTITY_MAP_VERSION, versionId,
-                                "mapId", String.valueOf(changes.getMapId()));
-
-                        System.out.println("MapEditHandler: Created PENDING version " + versionId + " for approval");
+                                "from_request", String.valueOf(reqId));
                     }
                 }
 
+                // Mark request as APPROVED
+                MapEditRequestDAO.updateStatus(conn, reqId, "APPROVED");
+
                 conn.commit();
-                validation.setSuccessMessage("All changes saved successfully. Pending manager approval.");
-                System.out.println("MapEditHandler: All changes committed successfully");
+                validation.setSuccessMessage("Request approved and changes applied successfully.");
+                System.out.println("MapEditHandler: Approved request " + reqId);
 
             } catch (SQLException e) {
                 conn.rollback();

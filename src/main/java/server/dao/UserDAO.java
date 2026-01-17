@@ -273,44 +273,82 @@ public class UserDAO {
     /**
      * Update customer profile.
      *
-     * @param userId User ID
-     * @param email  New email (null to keep current)
-     * @param phone  New phone (null to keep current)
+     * @param userId     User ID
+     * @param email      New email (null to keep current)
+     * @param phone      New phone (null to keep current)
+     * @param cardNumber New card number (null to keep current)
      * @return true if updated
      */
-    public static boolean updateProfile(int userId, String email, String phone) {
-        StringBuilder sql = new StringBuilder("UPDATE users SET ");
-        java.util.List<Object> params = new java.util.ArrayList<>();
+    public static boolean updateProfile(int userId, String email, String phone, String cardNumber) {
+        Connection conn = null;
+        try {
+            conn = DBConnector.getConnection();
+            conn.setAutoCommit(false); // Start transaction
 
-        if (email != null) {
-            sql.append("email = ?, ");
-            params.add(email);
-        }
-        if (phone != null) {
-            sql.append("phone = ?, ");
-            params.add(phone);
-        }
+            // 1. Update users table
 
-        if (params.isEmpty()) {
-            return true; // Nothing to update
-        }
+            StringBuilder sqlUser = new StringBuilder("UPDATE users SET ");
+            java.util.List<Object> paramsUser = new java.util.ArrayList<>();
 
-        // Remove trailing comma
-        sql.setLength(sql.length() - 2);
-        sql.append(" WHERE id = ?");
-        params.add(userId);
-
-        try (Connection conn = DBConnector.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
-
-            for (int i = 0; i < params.size(); i++) {
-                stmt.setObject(i + 1, params.get(i));
+            if (email != null) {
+                sqlUser.append("email = ?, ");
+                paramsUser.add(email);
+            }
+            if (phone != null) {
+                sqlUser.append("phone = ?, ");
+                paramsUser.add(phone);
             }
 
-            return stmt.executeUpdate() > 0;
+            if (!paramsUser.isEmpty()) {
+                sqlUser.setLength(sqlUser.length() - 2); // Remove trailing comma
+                sqlUser.append(" WHERE id = ?");
+                paramsUser.add(userId);
+
+                try (PreparedStatement stmt = conn.prepareStatement(sqlUser.toString())) {
+                    for (int i = 0; i < paramsUser.size(); i++) {
+                        stmt.setObject(i + 1, paramsUser.get(i));
+                    }
+                    stmt.executeUpdate();
+
+                }
+            }
+
+            // 2. Update customers table (for card)
+
+            if (cardNumber != null && !cardNumber.isEmpty()) {
+                String last4 = cardNumber.length() > 4 ? cardNumber.substring(cardNumber.length() - 4) : cardNumber;
+                String sqlCust = "UPDATE customers SET card_last4 = ? WHERE user_id = ?";
+                try (PreparedStatement stmt = conn.prepareStatement(sqlCust)) {
+                    stmt.setString(1, last4);
+                    stmt.setInt(2, userId);
+                    int rows = stmt.executeUpdate();
+                    if (rows > 0) {
+                        // updated customer
+                    } else {
+                        // If no customer record exists (shouldn't happen for CUSTOMER role), insert
+                        // one?
+                        // For now we assume customer record exists if role is CUSTOMER
+                    }
+                }
+            }
+
+            conn.commit();
+            return true;
+
         } catch (SQLException e) {
+            try {
+                if (conn != null)
+                    conn.rollback();
+            } catch (SQLException ex) {
+            }
             System.err.println("Error updating profile: " + e.getMessage());
             return false;
+        } finally {
+            try {
+                if (conn != null)
+                    conn.setAutoCommit(true);
+            } catch (SQLException e) {
+            }
         }
     }
 

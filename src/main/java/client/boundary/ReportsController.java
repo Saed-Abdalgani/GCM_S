@@ -201,7 +201,7 @@ public class ReportsController implements GCMClient.MessageHandler {
             // But earlier grep failed to find it?
             // If it's not found, user can fix.
 
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/boundary/DashboardScreen.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/dashboard.fxml"));
             Parent root = loader.load();
 
             Stage stage = (Stage) statusLabel.getScene().getWindow();
