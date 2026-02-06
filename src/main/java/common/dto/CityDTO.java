@@ -71,4 +71,19 @@ public class CityDTO implements Serializable {
     public String toString() {
         return name + " (" + mapCount + " maps)";
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        CityDTO cityDTO = (CityDTO) o;
+        return id == cityDTO.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
+    }
 }

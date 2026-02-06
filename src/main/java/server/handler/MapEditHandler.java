@@ -404,6 +404,7 @@ public class MapEditHandler {
 
     private static Response handleGetPendingMapEdits(Request request) {
         List<MapEditRequestDTO> requests = MapEditRequestDAO.getPendingRequests();
+        System.out.println("MapEditHandler: Found " + requests.size() + " pending map edit requests");
         return Response.success(request, requests);
     }
 
@@ -429,6 +430,9 @@ public class MapEditHandler {
 
         MapChanges changes = (MapChanges) request.getPayload();
         System.out.println("MapEditHandler: Submitting changes for approval");
+        System.out.println("  userId=" + request.getUserId() + ", mapId=" + changes.getMapId() + ", cityId="
+                + changes.getCityId());
+        System.out.println("  hasChanges=" + changes.hasChanges() + ", addedPois=" + changes.getAddedPois().size());
 
         // First validate all changes
         ValidationResult validation = validateAllChanges(changes);
@@ -438,17 +442,23 @@ public class MapEditHandler {
         }
 
         try (Connection conn = DBConnector.getConnection()) {
+            // Use userId 1 as default if not authenticated (for testing)
+            int userId = request.getUserId() > 0 ? request.getUserId() : 1;
+
             int reqId = MapEditRequestDAO.createRequest(conn,
                     changes.getMapId() != null ? changes.getMapId() : 0,
                     changes.getCityId() != null ? changes.getCityId() : 0,
-                    request.getUserId(),
+                    userId,
                     changes);
+
+            System.out.println("MapEditHandler: Created request with ID=" + reqId);
 
             if (reqId > 0) {
                 validation = ValidationResult.success("Changes submitted for manager approval. Request ID: " + reqId);
                 return Response.success(request, validation);
             }
         } catch (SQLException e) {
+            System.out.println("MapEditHandler: Database error - " + e.getMessage());
             return Response.error(request, Response.ERR_DATABASE, "Database error: " + e.getMessage());
         }
         return Response.error(request, Response.ERR_DATABASE, "Failed to submit request");
@@ -591,6 +601,12 @@ public class MapEditHandler {
                 validation.setSuccessMessage("Request approved and changes applied successfully.");
                 System.out.println("MapEditHandler: Approved request " + reqId);
 
+                // Notify customers who purchased this city about the update
+                Integer cityId = changes.getCityId();
+                if (cityId != null && cityId > 0) {
+                    notifyCustomersAboutMapUpdate(cityId, changes);
+                }
+
             } catch (SQLException e) {
                 conn.rollback();
                 System.out.println("MapEditHandler: Transaction rolled back - " + e.getMessage());
@@ -602,6 +618,62 @@ public class MapEditHandler {
         }
 
         return Response.success(request, validation);
+    }
+
+    /**
+     * Notify all customers who purchased a city about a map update.
+     */
+    private static void notifyCustomersAboutMapUpdate(int cityId, MapChanges changes) {
+        try {
+            // Get city name
+            CityDTO city = CityDAO.getCityById(cityId);
+            String cityName = city != null ? city.getName() : "City #" + cityId;
+
+            // Build notification message
+            String title = "🗺️ Map Update: " + cityName;
+            String body = buildUpdateNotificationBody(changes, cityName);
+
+            // Get all customers who purchased this city
+            java.util.List<Integer> customerIds = PurchaseDAO.getCustomerIdsForCity(cityId);
+            System.out.println(
+                    "MapEditHandler: Notifying " + customerIds.size() + " customers about map update for " + cityName);
+
+            // Send notification to each customer
+            try (Connection conn = DBConnector.getConnection()) {
+                for (int userId : customerIds) {
+                    int notifId = NotificationDAO.createNotification(conn, userId, title, body);
+                    if (notifId > 0) {
+                        System.out.println("  → Sent notification #" + notifId + " to user " + userId);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error sending map update notifications: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Build notification body for map update.
+     */
+    private static String buildUpdateNotificationBody(MapChanges changes, String cityName) {
+        StringBuilder body = new StringBuilder();
+        body.append("Good news! The map for ").append(cityName).append(" has been updated.\n\n");
+
+        if (!changes.getAddedPois().isEmpty()) {
+            body.append("• ").append(changes.getAddedPois().size()).append(" new point(s) of interest added\n");
+        }
+        if (!changes.getUpdatedPois().isEmpty()) {
+            body.append("• ").append(changes.getUpdatedPois().size()).append(" point(s) of interest updated\n");
+        }
+        if (!changes.getAddedTours().isEmpty()) {
+            body.append("• ").append(changes.getAddedTours().size()).append(" new tour(s) added\n");
+        }
+        if (!changes.getUpdatedTours().isEmpty()) {
+            body.append("• ").append(changes.getUpdatedTours().size()).append(" tour(s) updated\n");
+        }
+
+        body.append("\nView the updated map in your purchases.");
+        return body.toString();
     }
 
     /**
@@ -780,6 +852,9 @@ public class MapEditHandler {
                 type == MessageType.GET_MAPS_FOR_CITY ||
                 type == MessageType.GET_MAP_CONTENT ||
                 type == MessageType.SUBMIT_MAP_CHANGES ||
+                type == MessageType.GET_PENDING_MAP_EDITS ||
+                type == MessageType.APPROVE_MAP_EDIT ||
+                type == MessageType.REJECT_MAP_EDIT ||
                 type == MessageType.CREATE_CITY ||
                 type == MessageType.UPDATE_CITY ||
                 type == MessageType.CREATE_MAP ||

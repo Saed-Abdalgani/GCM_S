@@ -19,32 +19,69 @@ import server.scheduler.SubscriptionScheduler;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * GCM Server - Main server class handling client connections.
- * Supports both new Request/Response protocol and legacy string commands.
+ * 
+ * Phase 12: Multi-user concurrency with thread pool.
+ * Phase 13: Session cleanup on client disconnect.
+ * Phase 16: Proper thread management with named threads.
  */
 public class GCMServer extends AbstractServer {
 
+    // Thread pool for request handling (Phase 12)
+    private static final int THREAD_POOL_SIZE = 10;
+    private final ExecutorService requestExecutor;
+
     public GCMServer(int port) {
         super(port);
+
+        // Create named thread pool for request handling (Phase 16)
+        this.requestExecutor = Executors.newFixedThreadPool(THREAD_POOL_SIZE, new ThreadFactory() {
+            private final AtomicInteger threadNumber = new AtomicInteger(1);
+
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "GCM-RequestHandler-" + threadNumber.getAndIncrement());
+                t.setDaemon(false);
+                return t;
+            }
+        });
     }
 
     @Override
     protected void handleMessageFromClient(Object msg, ConnectionToClient client) {
+        // Process in thread pool for concurrent request handling (Phase 12)
+        requestExecutor.submit(() -> processClientMessage(msg, client));
+    }
+
+    /**
+     * Process a client message (runs in thread pool).
+     */
+    private void processClientMessage(Object msg, ConnectionToClient client) {
+        String clientId = getClientId(client);
         System.out.println("═══════════════════════════════════════════════════════════");
-        System.out.println("Message received from client: " + msg.getClass().getSimpleName());
+        System.out.println("[" + Thread.currentThread().getName() + "] Message from: " + clientId);
 
         try {
             // ==================== NEW PROTOCOL (Request/Response) ====================
             if (msg instanceof Request) {
                 Request request = (Request) msg;
-                System.out.println("Processing Request: " + request);
+                System.out.println("Processing Request: " + request.getType());
 
-                Response response = dispatchRequest(request);
-                System.out.println("Sending Response: " + response);
-
-                client.sendToClient(response);
+                try {
+                    Response response = dispatchRequest(request, clientId);
+                    System.out.println("Sending Response: " + (response.isOk() ? "OK" : "ERROR"));
+                    client.sendToClient(response);
+                } catch (Exception e) {
+                    System.out.println("!!! EXCEPTION in request handling: " + e.getMessage());
+                    e.printStackTrace();
+                }
                 return;
             }
 
@@ -57,15 +94,23 @@ public class GCMServer extends AbstractServer {
             System.out.println("Unknown message type: " + msg.getClass().getName());
 
         } catch (IOException e) {
-            System.out.println("Error sending response to client");
+            System.out.println("Error sending response to client: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
-     * Dispatch a Request to the appropriate handler.
+     * Get unique client identifier for session tracking.
      */
-    private Response dispatchRequest(Request request) {
+    private String getClientId(ConnectionToClient client) {
+        return client.getInetAddress().getHostAddress() + ":" + client.hashCode();
+    }
+
+    /**
+     * Dispatch a Request to the appropriate handler.
+     * Phase 13: Pass clientId for session-connection linking.
+     */
+    private Response dispatchRequest(Request request, String clientId) {
         MessageType type = request.getType();
 
         // Search handlers (no authentication required)
@@ -84,8 +129,22 @@ public class GCMServer extends AbstractServer {
         }
 
         // Authentication handlers (Phase 4)
+        // Special handling to link session to connection
         if (AuthHandler.canHandle(type)) {
-            return AuthHandler.handle(request);
+            Response response = AuthHandler.handle(request);
+
+            // If login successful, link session to connection (Phase 13)
+            if (type == MessageType.LOGIN && response.isOk() && request.getSessionToken() == null) {
+                // Session token is inside the LoginResponse payload
+                Object payload = response.getPayload();
+                if (payload instanceof common.dto.LoginResponse) {
+                    String newToken = ((common.dto.LoginResponse) payload).getSessionToken();
+                    if (newToken != null) {
+                        SessionManager.getInstance().setSessionConnection(newToken, clientId);
+                    }
+                }
+            }
+            return response;
         }
 
         // Purchase handlers (Phase 5)
@@ -212,6 +271,7 @@ public class GCMServer extends AbstractServer {
         System.out.println("║          GCM SERVER STARTED SUCCESSFULLY                 ║");
         System.out.println("╠══════════════════════════════════════════════════════════╣");
         System.out.println("║  Port: " + getPort() + "                                             ║");
+        System.out.println("║  Thread pool: " + THREAD_POOL_SIZE + " request handlers                      ║");
         System.out.println("║  Protocol: Request/Response + Legacy String              ║");
         System.out.println("╚══════════════════════════════════════════════════════════╝");
 
@@ -221,23 +281,53 @@ public class GCMServer extends AbstractServer {
 
     @Override
     protected void serverStopped() {
-        System.out.println("Server has stopped listening for connections.");
+        System.out.println("Server stopping...");
+
+        // Shutdown request executor (Phase 12)
+        requestExecutor.shutdown();
+        try {
+            if (!requestExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                requestExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            requestExecutor.shutdownNow();
+        }
+
+        // Close connection pool (Phase 12)
+        DBConnector.closePool();
+
+        System.out.println("✓ Server stopped");
     }
 
     @Override
     protected void clientConnected(ConnectionToClient client) {
-        System.out.println("→ Client connected: " + client.getInetAddress());
+        String clientId = getClientId(client);
+        System.out.println("→ Client connected: " + clientId);
     }
 
     @Override
     protected synchronized void clientDisconnected(ConnectionToClient client) {
-        System.out.println("← Client disconnected: " + client.getInetAddress());
+        String clientId = getClientId(client);
+        System.out.println("← Client disconnected: " + clientId);
+
+        // Phase 13: Clean up session on disconnect
+        SessionManager.getInstance().invalidateByConnectionId(clientId);
     }
 
     // MAIN METHOD TO START THE SERVER
     public static void main(String[] args) {
         int port = 5555;
         GCMServer server = new GCMServer(port);
+
+        // Add shutdown hook for graceful shutdown
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("\n🛑 Shutdown signal received...");
+            try {
+                server.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }));
 
         try {
             server.listen();

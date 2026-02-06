@@ -183,14 +183,11 @@ public class RegistrationController {
                     statusLabel.setText("✓ Registration successful! Redirecting to login...");
                     statusLabel.setStyle("-fx-text-fill: #27ae60;");
 
-                    // Wait a moment then redirect to login
-                    new Thread(() -> {
-                        try {
-                            Thread.sleep(1500);
-                        } catch (InterruptedException e) {
-                        }
-                        javafx.application.Platform.runLater(this::navigateToLogin);
-                    }).start();
+                    // Use proper JavaFX timer instead of Thread.sleep (Phase 14)
+                    javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(
+                            javafx.util.Duration.millis(1500));
+                    pause.setOnFinished(e -> navigateToLogin());
+                    pause.play();
                 } else {
                     statusLabel.setText("✗ " + resp.getErrorMessage());
                     statusLabel.setStyle("-fx-text-fill: #e74c3c;");

@@ -29,13 +29,6 @@
                 <ComboBox fx:id="cityComboBox" promptText="Select a city..." prefWidth="250"
                           style="-fx-background-color: #16213e; -fx-font-size: 13px;"/>
                           
-                <HBox spacing="10" alignment="CENTER_LEFT">
-                    <Label text="Price:" style="-fx-text-fill: #aaa; -fx-font-size: 12px;"/>
-                    <TextField fx:id="cityPriceField" promptText="0.0" prefWidth="100"
-                              style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-font-size: 13px;"/>
-                    <Button text="Update" onAction="#handleUpdatePrice"
-                            style="-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 5 10; -fx-background-radius: 5;"/>
-                </HBox>
                 <Button fx:id="createCityBtn" text="+ Create New City" onAction="#handleCreateCity" prefWidth="250"
                         style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15; -fx-background-radius: 5;"/>
             </VBox>

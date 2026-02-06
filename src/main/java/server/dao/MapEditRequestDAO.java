@@ -69,6 +69,8 @@ public class MapEditRequestDAO {
                 "WHERE r.status = 'PENDING' " +
                 "ORDER BY r.created_at ASC";
 
+        System.out.println("MapEditRequestDAO: Fetching pending requests...");
+
         try (Connection conn = DBConnector.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql);
                 ResultSet rs = stmt.executeQuery()) {
@@ -76,8 +78,10 @@ public class MapEditRequestDAO {
             while (rs.next()) {
                 requests.add(mapResultSetToDTO(rs));
             }
+            System.out.println("MapEditRequestDAO: Found " + requests.size() + " pending requests");
         } catch (SQLException e) {
             System.err.println("Error getting pending requests: " + e.getMessage());
+            e.printStackTrace();
         }
         return requests;
     }

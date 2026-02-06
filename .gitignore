@@ -1,5 +1,6 @@
 # Compiled class files
 target/
+*.class
 
 # IDE files
 .idea/
@@ -7,6 +8,10 @@ target/
 .project
 .classpath
 .settings/
+.vscode/
+*.swp
+*.swo
+*~
 
 # Maven
 pom.xml.tag
@@ -15,10 +20,63 @@ pom.xml.versionsBackup
 pom.xml.next
 release.properties
 dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
 # Logs
 *.log
+logs/
 
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Sensitive/Config files - IMPORTANT
+*.properties
+!src/main/resources/*.properties
+application-local.properties
+application-dev.properties
+application-prod.properties
+secrets.properties
+db.properties
+*.env
+.env
+.env.*
+
+# Database
+*.sql.bak
+*.db
+*.sqlite
+
+# Credentials & Keys
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+*.crt
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Package files
+*.jar
+!lib/*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Test output
+test-output/
+surefire-reports/
+
+# JRebel
+rebel.xml

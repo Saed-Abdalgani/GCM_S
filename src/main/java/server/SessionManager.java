@@ -7,6 +7,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Manages user sessions to prevent concurrent logins.
  * Stores session tokens and tracks which users are currently logged in.
+ * 
+ * Phase 13: Single Session Per User
+ * - Username → activeSessionToken + connectionId mapping
+ * - On LOGIN: reject if already active
+ * - On disconnect: cleanup session by connectionId
  */
 public class SessionManager {
 
@@ -18,6 +23,9 @@ public class SessionManager {
 
     // Maps userId → session token (to check if user already logged in)
     private final Map<Integer, String> userSessions = new ConcurrentHashMap<>();
+
+    // Maps connectionId → session token (for disconnect cleanup)
+    private final Map<String, String> connectionSessions = new ConcurrentHashMap<>();
 
     private SessionManager() {
     }
@@ -31,18 +39,21 @@ public class SessionManager {
 
     /**
      * Session information holder.
+     * Phase 13: Added connectionId for disconnect cleanup.
      */
     public static class SessionInfo {
         public final int userId;
         public final String username;
         public final String role;
         public final long createdAt;
+        public String connectionId; // Mutable - set when login completes
 
         public SessionInfo(int userId, String username, String role) {
             this.userId = userId;
             this.username = username;
             this.role = role;
             this.createdAt = System.currentTimeMillis();
+            this.connectionId = null;
         }
     }
 
@@ -83,6 +94,22 @@ public class SessionManager {
     }
 
     /**
+     * Associate a session with a connection ID for disconnect cleanup.
+     * Called after successful login.
+     * 
+     * @param token        Session token
+     * @param connectionId Connection identifier (e.g., client address)
+     */
+    public void setSessionConnection(String token, String connectionId) {
+        SessionInfo info = sessions.get(token);
+        if (info != null) {
+            info.connectionId = connectionId;
+            connectionSessions.put(connectionId, token);
+            System.out.println("  → Session linked to connection: " + connectionId);
+        }
+    }
+
+    /**
      * Validate a session token.
      * 
      * @param token Session token to validate
@@ -104,10 +131,43 @@ public class SessionManager {
         SessionInfo info = sessions.remove(token);
         if (info != null) {
             userSessions.remove(info.userId);
+            if (info.connectionId != null) {
+                connectionSessions.remove(info.connectionId);
+            }
             System.out.println("✓ Session invalidated for user: " + info.username);
             return true;
         }
         return false;
+    }
+
+    /**
+     * Invalidate session by connection ID (for disconnect cleanup).
+     * Phase 13: Called when client disconnects unexpectedly.
+     * 
+     * @param connectionId Connection ID
+     * @return true if session was found and invalidated
+     */
+    public boolean invalidateByConnectionId(String connectionId) {
+        String token = connectionSessions.get(connectionId);
+        if (token != null) {
+            System.out.println("🔌 Connection lost - cleaning up session for: " + connectionId);
+            return invalidateSession(token);
+        }
+        return false;
+    }
+
+    /**
+     * Get session by connection ID.
+     * 
+     * @param connectionId Connection ID
+     * @return SessionInfo or null
+     */
+    public SessionInfo getSessionByConnectionId(String connectionId) {
+        String token = connectionSessions.get(connectionId);
+        if (token != null) {
+            return sessions.get(token);
+        }
+        return null;
     }
 
     /**
@@ -139,5 +199,13 @@ public class SessionManager {
      */
     public int getActiveSessionCount() {
         return sessions.size();
+    }
+
+    /**
+     * Get session statistics for monitoring.
+     */
+    public String getStats() {
+        return String.format("Sessions[active=%d, connections=%d]",
+                sessions.size(), connectionSessions.size());
     }
 }

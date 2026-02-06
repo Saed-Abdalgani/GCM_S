@@ -374,6 +374,46 @@ public class PurchaseDAO {
         return purchases;
     }
 
+    /**
+     * Get all user IDs who have purchased or have an active subscription for a
+     * city.
+     * Used for sending map update notifications.
+     *
+     * @param cityId City ID
+     * @return List of user IDs
+     */
+    public static java.util.List<Integer> getCustomerIdsForCity(int cityId) {
+        java.util.Set<Integer> userIds = new java.util.HashSet<>();
+
+        // Get users with one-time purchases
+        String purchaseQuery = "SELECT DISTINCT user_id FROM purchases WHERE city_id = ?";
+        try (Connection conn = DBConnector.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(purchaseQuery)) {
+            stmt.setInt(1, cityId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                userIds.add(rs.getInt("user_id"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting purchase customers: " + e.getMessage());
+        }
+
+        // Get users with active subscriptions
+        String subQuery = "SELECT DISTINCT user_id FROM subscriptions WHERE city_id = ? AND is_active = TRUE AND end_date > NOW()";
+        try (Connection conn = DBConnector.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(subQuery)) {
+            stmt.setInt(1, cityId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                userIds.add(rs.getInt("user_id"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting subscription customers: " + e.getMessage());
+        }
+
+        return new java.util.ArrayList<>(userIds);
+    }
+
     // ==================== Phase 7: Subscription Expiry Methods
     // ====================
 

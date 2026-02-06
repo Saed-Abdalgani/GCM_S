@@ -32,8 +32,6 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
     @FXML
     private ComboBox<CityDTO> cityComboBox;
     @FXML
-    private TextField cityPriceField;
-    @FXML
     private ListView<MapSummary> mapsListView;
     @FXML
     private Button createCityBtn;
@@ -93,6 +91,7 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
     private TourDTO editingTour;
     private boolean hasUnsavedChanges = false;
     private int pendingSelectCityId = -1;
+    private MapChanges pendingChanges = new MapChanges(); // Collect changes locally
 
     /**
      * Initialize the controller.
@@ -128,7 +127,6 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
             if (selectedCity != null) {
                 System.out.println(
                         "DEBUG: Selected city ID: " + selectedCity.getId() + ", Maps: " + selectedCity.getMapCount());
-                cityPriceField.setText(String.valueOf(selectedCity.getPrice()));
                 control.getMapsForCity(selectedCity.getId());
 
                 // Force UI state update
@@ -302,36 +300,12 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
 
         dialog.showAndWait().ifPresent(name -> {
             if (!name.trim().isEmpty()) {
-                control.createCity(name.trim(), "New city description", 50.0);
-                setStatus("Creating city...");
+                // Add to pending changes instead of creating immediately
+                pendingChanges.withNewCity(name.trim(), "New city description", 50.0);
+                hasUnsavedChanges = true;
+                setStatus("City creation added to pending changes. Click 'Save All Changes' to submit for approval.");
             }
         });
-    }
-
-    @FXML
-    private void handleUpdatePrice() {
-        if (selectedCity == null) {
-            showError("Please select a city first");
-            return;
-        }
-
-        try {
-            double price = Double.parseDouble(cityPriceField.getText().trim());
-            if (price < 0) {
-                showError("Price must be non-negative");
-                return;
-            }
-
-            // Update local object
-            selectedCity.setPrice(price);
-
-            // Send update to server
-            control.updateCity(selectedCity);
-            setStatus("Updating price...");
-
-        } catch (NumberFormatException e) {
-            showError("Invalid price format");
-        }
     }
 
     // ==================== Map Operations ====================
@@ -352,8 +326,12 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
 
         dialog.showAndWait().ifPresent(name -> {
             if (!name.trim().isEmpty()) {
-                control.createMap(selectedCity.getId(), name.trim(), "New map description");
-                setStatus("Creating map...");
+                // Add to pending changes instead of creating immediately
+                pendingChanges.setCityId(selectedCity.getId());
+                pendingChanges.setNewMapName(name.trim());
+                pendingChanges.setNewMapDescription("New map description");
+                hasUnsavedChanges = true;
+                setStatus("Map creation added to pending changes. Click 'Save All Changes' to submit for approval.");
             }
         });
     }
@@ -365,13 +343,12 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
             return;
         }
 
-        MapChanges changes = new MapChanges();
-        changes.setMapId(currentMapContent.getMapId());
-        changes.setNewMapName(mapNameField.getText().trim());
-        changes.setNewMapDescription(mapDescArea.getText().trim());
-
-        control.submitMapChanges(changes);
-        setStatus("Saving map info...");
+        // Add to pending changes instead of sending directly
+        pendingChanges.setMapId(currentMapContent.getMapId());
+        pendingChanges.setNewMapName(mapNameField.getText().trim());
+        pendingChanges.setNewMapDescription(mapDescArea.getText().trim());
+        hasUnsavedChanges = true;
+        setStatus("Map info added to pending changes. Click 'Save All Changes' to submit for approval.");
     }
 
     // ==================== POI Operations ====================
@@ -422,14 +399,17 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         editingPoi.setAccessible(poiAccessibleCheck.isSelected());
         editingPoi.setShortExplanation(poiDescArea.getText().trim());
 
+        // Add to pending changes instead of sending immediately
         if (editingPoi.getId() == 0) {
-            control.addPoi(editingPoi);
+            pendingChanges.addPoi(editingPoi);
+            setStatus("POI added to pending changes. Click 'Save All Changes' to submit.");
         } else {
-            control.updatePoi(editingPoi);
+            pendingChanges.updatePoi(editingPoi);
+            setStatus("POI updated in pending changes. Click 'Save All Changes' to submit.");
         }
 
+        hasUnsavedChanges = true;
         handleCancelPoiEdit();
-        setStatus("Saving POI...");
     }
 
     @FXML
@@ -440,13 +420,14 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Delete POI");
         confirm.setHeaderText("Delete " + editingPoi.getName() + "?");
-        confirm.setContentText("This cannot be undone. POIs used in tours cannot be deleted.");
+        confirm.setContentText("This will be submitted for manager approval.");
 
         confirm.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                control.deletePoi(editingPoi.getId());
+                pendingChanges.deletePoi(editingPoi.getId());
                 handleCancelPoiEdit();
-                setStatus("Deleting POI...");
+                hasUnsavedChanges = true;
+                setStatus("POI deletion added to pending changes. Click 'Save All Changes' to submit.");
             }
         });
     }
@@ -514,14 +495,17 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         editingTour.setName(tourNameField.getText().trim());
         editingTour.setDescription(tourDescArea.getText().trim());
 
+        // Add to pending changes instead of sending immediately
         if (editingTour.getId() == 0) {
-            control.createTour(editingTour);
+            pendingChanges.addTour(editingTour);
+            setStatus("Tour added to pending changes. Click 'Save All Changes' to submit.");
         } else {
-            control.updateTour(editingTour);
+            pendingChanges.updateTour(editingTour);
+            setStatus("Tour updated in pending changes. Click 'Save All Changes' to submit.");
         }
 
+        hasUnsavedChanges = true;
         handleCancelTourEdit();
-        setStatus("Saving tour...");
     }
 
     @FXML
@@ -532,13 +516,14 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Delete Tour");
         confirm.setHeaderText("Delete " + editingTour.getName() + "?");
-        confirm.setContentText("This will also delete all tour stops.");
+        confirm.setContentText("This will be submitted for manager approval.");
 
         confirm.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
-                control.deleteTour(editingTour.getId());
+                pendingChanges.deleteTour(editingTour.getId());
                 handleCancelTourEdit();
-                setStatus("Deleting tour...");
+                hasUnsavedChanges = true;
+                setStatus("Tour deletion added to pending changes. Click 'Save All Changes' to submit.");
             }
         });
     }
@@ -581,27 +566,37 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
 
     @FXML
     private void handleSaveAllChanges() {
-        if (currentMapContent == null) {
-            showError("No map selected. Please select a map first.");
+        // Allow saving if we have either a map or a city selected, or pending changes
+        // exist
+        if (currentMapContent == null && selectedCity == null && !pendingChanges.hasChanges()) {
+            showError("Please select a city or map first, or make some changes.");
             return;
         }
 
-        // Create a MapChanges object with the current map info
-        MapChanges changes = new MapChanges();
-        changes.setMapId(currentMapContent.getMapId());
-        changes.setCityId(selectedCity != null ? selectedCity.getId() : null);
+        // Set map and city IDs on pendingChanges
+        if (currentMapContent != null) {
+            pendingChanges.setMapId(currentMapContent.getMapId());
+        }
+
+        if (selectedCity != null) {
+            pendingChanges.setCityId(selectedCity.getId());
+        }
 
         // Set map name and description if they were modified
         if (mapNameField.getText() != null && !mapNameField.getText().isEmpty()) {
-            changes.setNewMapName(mapNameField.getText().trim());
+            pendingChanges.setNewMapName(mapNameField.getText().trim());
         }
         if (mapDescArea.getText() != null) {
-            changes.setNewMapDescription(mapDescArea.getText().trim());
+            pendingChanges.setNewMapDescription(mapDescArea.getText().trim());
         }
 
-        // Submit changes to server (creates PENDING version for approval)
-        control.submitMapChanges(changes);
-        setStatus("Submitting changes for approval...");
+        // Submit all pending changes to server (creates PENDING request for manager
+        // approval)
+        control.submitMapChanges(pendingChanges);
+        setStatus("Submitting changes for manager approval...");
+
+        // Reset pending changes
+        pendingChanges = new MapChanges();
         hasUnsavedChanges = false;
     }
 
@@ -667,19 +662,31 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
                 targetId = selectedCity.getId();
             }
 
+            // Store the items
             cityComboBox.setItems(FXCollections.observableArrayList(cities));
 
             // Restore selection
+            CityDTO cityToSelect = null;
             if (targetId != -1) {
                 for (CityDTO c : cities) {
                     if (c.getId() == targetId) {
-                        cityComboBox.getSelectionModel().select(c);
-                        // Manually update selectedCity just in case
-                        selectedCity = c;
-                        control.getMapsForCity(selectedCity.getId());
+                        cityToSelect = c;
                         break;
                     }
                 }
+            }
+
+            if (cityToSelect != null) {
+                // Use setValue instead of select to ensure ButtonCell updates
+                cityComboBox.setValue(cityToSelect);
+                selectedCity = cityToSelect;
+                control.getMapsForCity(selectedCity.getId());
+                createMapBtn.setDisable(false);
+            } else {
+                // No city to select - clear value explicitly
+                cityComboBox.setValue(null);
+                selectedCity = null;
+                createMapBtn.setDisable(true);
             }
 
             pendingSelectCityId = -1; // Reset
@@ -763,13 +770,10 @@ public class MapEditorScreen implements ContentManagementControl.ContentCallback
         statusLabel.setText("⚠️ " + message);
         statusLabel.setStyle("-fx-text-fill: #e74c3c;");
 
-        // Reset style after 3 seconds
-        new Thread(() -> {
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-            }
-            Platform.runLater(() -> statusLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.8);"));
-        }).start();
+        // Use proper JavaFX timer instead of Thread.sleep (Phase 14)
+        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(
+                javafx.util.Duration.millis(3000));
+        pause.setOnFinished(e -> statusLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.8);"));
+        pause.play();
     }
 }

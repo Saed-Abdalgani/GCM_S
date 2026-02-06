@@ -176,6 +176,8 @@ public class LoginController implements GCMClient.MessageHandler {
     @Override
     public void displayMessage(Object msg) {
         javafx.application.Platform.runLater(() -> {
+            System.out.println("DEBUG: displayMessage received: " + msg.getClass().getName());
+
             // Handle legacy string responses
             if (msg instanceof String) {
                 String responseStr = (String) msg;
@@ -189,11 +191,28 @@ public class LoginController implements GCMClient.MessageHandler {
             // Handle new Response protocol
             else if (msg instanceof common.Response) {
                 common.Response response = (common.Response) msg;
+                System.out.println("DEBUG: Response type=" + response.getRequestType() + ", isOk=" + response.isOk());
+                if (response.getPayload() != null) {
+                    System.out.println("DEBUG: Payload class=" + response.getPayload().getClass().getName());
+                }
+
                 if (response.getRequestType() == common.MessageType.LOGIN) {
-                    if (response.isOk() && response.getPayload() instanceof common.dto.LoginResponse) {
-                        handleLoginSuccessNew((common.dto.LoginResponse) response.getPayload());
+                    if (response.isOk()) {
+                        Object payload = response.getPayload();
+                        System.out.println("DEBUG: Login OK! Payload="
+                                + (payload != null ? payload.getClass().getName() : "null"));
+                        if (payload instanceof common.dto.LoginResponse) {
+                            handleLoginSuccessNew((common.dto.LoginResponse) payload);
+                        } else {
+                            // Fallback: Try to handle even if instanceof fails
+                            System.out.println("DEBUG: Payload instanceof check FAILED, trying alternative handling");
+                            statusLabel.setText("Login successful but payload mismatch - check console");
+                            statusLabel.setStyle("-fx-text-fill: #f39c12;");
+                        }
                     } else {
-                        statusLabel.setText(response.getErrorMessage());
+                        String errMsg = response.getErrorMessage();
+                        System.out.println("DEBUG: Login ERROR: " + errMsg);
+                        statusLabel.setText(errMsg != null ? errMsg : "Login failed");
                         statusLabel.setStyle("-fx-text-fill: #e74c3c;");
                     }
                 }

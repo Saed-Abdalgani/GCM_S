@@ -5,10 +5,12 @@ import client.LoginController;
 import common.MessageType;
 import common.Request;
 import common.Response;
+import common.dto.NotificationDTO;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -17,7 +19,9 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Modern Dashboard screen controller.
@@ -318,27 +322,88 @@ public class DashboardScreen implements GCMClient.MessageHandler {
     }
 
     private void showNotificationsDialog() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Notifications");
-        alert.setHeaderText("🔔 Your Notifications");
-        alert.setContentText("Loading notifications...\n\n" +
-                "Notifications include:\n" +
-                "• Subscription expiry reminders\n" +
-                "• Map update alerts\n" +
-                "• System announcements");
+        // Create dialog
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Notifications");
+        dialog.setHeaderText("🔔 Your Notifications");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().setPrefSize(500, 400);
 
-        // Load and display notifications
+        // Create content VBox
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(15));
+        content.setStyle("-fx-background-color: #f8f9fa;");
+
+        Label loadingLabel = new Label("Loading notifications...");
+        loadingLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #666;");
+        content.getChildren().add(loadingLabel);
+
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPrefViewportHeight(300);
+        dialog.getDialogPane().setContent(scrollPane);
+
+        // Request notifications from server
         if (client != null) {
             try {
                 String token = LoginController.currentSessionToken;
                 Request request = new Request(MessageType.GET_MY_NOTIFICATIONS, null, token);
                 client.sendToServer(request);
+
+                // Store reference to update later
+                pendingNotificationsContent = content;
             } catch (IOException e) {
+                loadingLabel.setText("Failed to load notifications: " + e.getMessage());
                 e.printStackTrace();
             }
         }
 
-        alert.showAndWait();
+        dialog.showAndWait();
+        pendingNotificationsContent = null;
+    }
+
+    // Temporary storage for notification dialog content
+    private VBox pendingNotificationsContent = null;
+
+    @SuppressWarnings("unchecked")
+    private void displayNotifications(List<NotificationDTO> notifications) {
+        if (pendingNotificationsContent == null)
+            return;
+
+        pendingNotificationsContent.getChildren().clear();
+
+        if (notifications.isEmpty()) {
+            Label emptyLabel = new Label("📭 No notifications");
+            emptyLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #888;");
+            pendingNotificationsContent.getChildren().add(emptyLabel);
+            return;
+        }
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
+
+        for (NotificationDTO n : notifications) {
+            VBox card = new VBox(5);
+            card.setPadding(new Insets(10));
+            String bgColor = n.isRead() ? "#ffffff" : "#e3f2fd";
+            card.setStyle("-fx-background-color: " + bgColor
+                    + "; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #ddd; -fx-border-width: 1;");
+
+            Label titleLabel = new Label((n.isRead() ? "" : "🔵 ") + n.getTitle());
+            titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
+            Label bodyLabel = new Label(n.getBody());
+            bodyLabel.setWrapText(true);
+            bodyLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #333;");
+
+            String dateStr = n.getCreatedAt() != null
+                    ? n.getCreatedAt().toLocalDateTime().format(fmt)
+                    : "";
+            Label dateLabel = new Label(dateStr);
+            dateLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #888;");
+
+            card.getChildren().addAll(titleLabel, bodyLabel, dateLabel);
+            pendingNotificationsContent.getChildren().add(card);
+        }
     }
 
     // ==================== City Operations ====================
@@ -431,6 +496,7 @@ public class DashboardScreen implements GCMClient.MessageHandler {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public void displayMessage(Object msg) {
         Platform.runLater(() -> {
             if (msg instanceof Response) {
@@ -438,6 +504,14 @@ public class DashboardScreen implements GCMClient.MessageHandler {
                 if (response.getRequestType() == MessageType.GET_UNREAD_COUNT && response.isOk()) {
                     int count = (Integer) response.getPayload();
                     updateNotificationBadge(count);
+                    return;
+                }
+                if (response.getRequestType() == MessageType.GET_MY_NOTIFICATIONS && response.isOk()) {
+                    List<NotificationDTO> notifications = (List<NotificationDTO>) response.getPayload();
+                    displayNotifications(notifications);
+                    // Refresh badge count
+                    loadNotificationCount();
+                    return;
                 }
                 return;
             }

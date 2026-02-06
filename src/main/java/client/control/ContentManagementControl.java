@@ -27,6 +27,7 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
     /** Callback for content management operations */
     private ContentCallback callback;
     private GCMClient client;
+    private MessageType lastRequestType;
 
     /**
      * Callback interface for content management results.
@@ -221,6 +222,7 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
     private void sendRequest(Request request) {
         try {
             System.out.println("ContentManagementControl: Sending request - " + request.getType());
+            lastRequestType = request.getType();
             client.sendToServer(request);
         } catch (IOException e) {
             System.out.println("ContentManagementControl: Error sending request");
@@ -264,32 +266,21 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
                     callback.onCitiesReceived((List<CityDTO>) payload);
                 } else if (first instanceof MapSummary) {
                     callback.onMapsReceived((List<MapSummary>) payload);
-                }
-            } else {
-                // Empty list - could be cities or maps
-                callback.onCitiesReceived(new ArrayList<>());
-            }
-        } else if (payload instanceof List) { // Re-check list type after generic check failure if needed, or handle
-                                              // generically
-            // The above block handles most lists. We need to check the FIRST element to
-            // know type.
-            // But if list is empty, we don't know.
-            // Ideally the Request type should map to a specific callback.
-            // But here we only have Response payload.
-            // For now, let's assume if it is NOT City or MapSummary, check for
-            // MapEditRequestDTO
-            List<?> list = (List<?>) payload;
-            if (!list.isEmpty()) {
-                Object first = list.get(0);
-                if (first instanceof MapEditRequestDTO) {
+                } else if (first instanceof MapEditRequestDTO) {
+                    // This is the key fix - route MapEditRequestDTO lists properly
+                    System.out.println("ContentManagementControl: Routing " + list.size()
+                            + " MapEditRequestDTO items to callback");
                     callback.onPendingRequestsReceived((List<MapEditRequestDTO>) payload);
                 }
             } else {
-                // If empty and we expected requests... difficult.
-                // We'll trust the caller context or add more robust context tracking.
-                // For now, just trigger "cities" as default fallback which might be wrong but
-                // harmless if ignored.
-                // Or better: trigger ALL empty callbacks? No.
+                // Empty list - use lastRequestType to determine callback
+                if (lastRequestType == MessageType.GET_MAPS_FOR_CITY) {
+                    callback.onMapsReceived(new ArrayList<>());
+                } else if (lastRequestType == MessageType.GET_PENDING_MAP_EDITS) {
+                    callback.onPendingRequestsReceived(new ArrayList<>());
+                } else {
+                    callback.onCitiesReceived(new ArrayList<>());
+                }
             }
         } else if (payload instanceof MapContent) {
             callback.onMapContentReceived((MapContent) payload);

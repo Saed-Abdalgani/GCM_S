@@ -325,6 +325,12 @@ public class CatalogSearchScreen implements SearchControl.SearchResultCallback {
     }
 
     private void handlePurchase(int cityId, int months) {
+        // Guest restriction: Block guests from purchasing (Phase 5 fix)
+        if (client.LoginController.isAnonymousUser()) {
+            updateStatus("⚠️ Guests cannot purchase - Please log in first", "#f39c12");
+            return;
+        }
+
         // Send request
         try {
             common.Request req;

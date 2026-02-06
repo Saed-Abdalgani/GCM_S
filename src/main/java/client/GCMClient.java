@@ -129,13 +129,17 @@ public class GCMClient extends AbstractClient {
 
     @Override
     protected void handleMessageFromServer(Object msg) {
+        System.out.println("GCMClient: handleMessageFromServer called with: " + msg.getClass().getName());
+
         // If it's a Response, add to queue for sync requests
         if (msg instanceof Response) {
+            System.out.println("GCMClient: Adding Response to queue");
             responseQueue.offer((Response) msg);
         }
 
         // Also notify handler if set
         if (messageHandler != null) {
+            System.out.println("GCMClient: Calling messageHandler.displayMessage");
             messageHandler.displayMessage(msg);
         } else if (!(msg instanceof Response)) {
             System.out.println("GCMClient: Received message but no handler set: " + msg);
