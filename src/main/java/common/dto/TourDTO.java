@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * DTO for tour data with all stops.
- * Represents a complete tour with ordered stops and duration info.
+ * Represents a complete tour with ordered stops and total road distance (meters).
  */
 public class TourDTO implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -15,19 +15,25 @@ public class TourDTO implements Serializable {
     private int cityId;
     private String name;
     private String description;
-    private int estimatedDurationMinutes;
+    /** Total route distance in meters (sum of consecutive POI-to-POI road distances). */
+    private Double totalDistanceMeters;
     private List<TourStopDTO> stops;
+    /** True when tour is new and awaiting manager approval. */
+    private boolean draft;
+    /** True when current user has a PENDING map_edit_request that includes this tour (waiting for manager approval). */
+    private boolean waitingForApproval;
+    /** True when tour is pending deletion, awaiting manager approval. */
+    private boolean pendingDeletion;
 
     public TourDTO() {
         this.stops = new ArrayList<>();
     }
 
-    public TourDTO(int id, int cityId, String name, String description, int estimatedDurationMinutes) {
+    public TourDTO(int id, int cityId, String name, String description) {
         this.id = id;
         this.cityId = cityId;
         this.name = name;
         this.description = description;
-        this.estimatedDurationMinutes = estimatedDurationMinutes;
         this.stops = new ArrayList<>();
     }
 
@@ -36,13 +42,6 @@ public class TourDTO implements Serializable {
      */
     public void addStop(TourStopDTO stop) {
         this.stops.add(stop);
-    }
-
-    /**
-     * Calculate total duration from stops.
-     */
-    public int calculateTotalDuration() {
-        return stops.stream().mapToInt(TourStopDTO::getDurationMinutes).sum();
     }
 
     // Getters and Setters
@@ -78,12 +77,12 @@ public class TourDTO implements Serializable {
         this.description = description;
     }
 
-    public int getEstimatedDurationMinutes() {
-        return estimatedDurationMinutes;
+    public Double getTotalDistanceMeters() {
+        return totalDistanceMeters;
     }
 
-    public void setEstimatedDurationMinutes(int estimatedDurationMinutes) {
-        this.estimatedDurationMinutes = estimatedDurationMinutes;
+    public void setTotalDistanceMeters(Double totalDistanceMeters) {
+        this.totalDistanceMeters = totalDistanceMeters;
     }
 
     public List<TourStopDTO> getStops() {
@@ -94,8 +93,33 @@ public class TourDTO implements Serializable {
         this.stops = stops;
     }
 
+    public boolean isDraft() {
+        return draft;
+    }
+
+    public void setDraft(boolean draft) {
+        this.draft = draft;
+    }
+
+    public boolean isWaitingForApproval() {
+        return waitingForApproval;
+    }
+
+    public void setWaitingForApproval(boolean waitingForApproval) {
+        this.waitingForApproval = waitingForApproval;
+    }
+
+    public boolean isPendingDeletion() {
+        return pendingDeletion;
+    }
+
+    public void setPendingDeletion(boolean pendingDeletion) {
+        this.pendingDeletion = pendingDeletion;
+    }
+
     @Override
     public String toString() {
-        return name + " (" + stops.size() + " stops, ~" + estimatedDurationMinutes + " min)";
+        String dist = totalDistanceMeters != null ? String.format("%.0f m", totalDistanceMeters) : "? m";
+        return name + " (" + stops.size() + " stops, " + dist + ")";
     }
 }

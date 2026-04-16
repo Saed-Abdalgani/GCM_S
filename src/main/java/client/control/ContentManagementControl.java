@@ -1,23 +1,23 @@
 package client.control;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import client.GCMClient;
+import client.LoginController;
 import common.MessageType;
+import common.Poi;
 import common.Request;
 import common.Response;
 import common.dto.CityDTO;
 import common.dto.MapChanges;
 import common.dto.MapContent;
+import common.dto.MapEditRequestDTO;
 import common.dto.MapSummary;
-import common.Poi;
 import common.dto.TourDTO;
 import common.dto.TourStopDTO;
 import common.dto.ValidationResult;
-import common.dto.MapEditRequestDTO;
-
-import client.GCMClient;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Client-side controller for content management (map editing) operations.
@@ -39,10 +39,14 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
 
         void onMapContentReceived(MapContent content);
 
+        void onPoisForCityReceived(List<common.Poi> pois);
+
         void onValidationResult(ValidationResult result);
 
         void onPendingRequestsReceived(List<MapEditRequestDTO> requests);
 
+        /** Called when GET_MY_DRAFT returns (user-level draft, e.g. delete-city-only). Payload may be null. */
+        void onMyDraftReceived(MapEditRequestDTO draft);
         void onError(String errorCode, String errorMessage);
     }
 
@@ -63,10 +67,11 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
     // ==================== City Operations ====================
 
     /**
-     * Get all cities for editor.
+     * Get all cities for editor (includes unapproved cities created by this user when session token is set).
      */
     public void getCities() {
-        Request request = new Request(MessageType.GET_CITIES);
+        String token = LoginController.currentSessionToken;
+        Request request = new Request(MessageType.GET_CITIES, null, token);
         sendRequest(request);
     }
 
@@ -90,18 +95,38 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
     // ==================== Map Operations ====================
 
     /**
-     * Get maps for a city.
+     * Get maps for a city (includes unapproved maps created by this user when session token is set).
      */
     public void getMapsForCity(int cityId) {
-        Request request = new Request(MessageType.GET_MAPS_FOR_CITY, cityId);
+        String token = LoginController.currentSessionToken;
+        Request request = new Request(MessageType.GET_MAPS_FOR_CITY, cityId, token);
         sendRequest(request);
     }
 
     /**
-     * Get full map content for editing.
+     * Get current user's draft (e.g. delete-city-only with no map context). Response via onMyDraftReceived.
+     */
+    public void getMyDraft() {
+        String token = LoginController.currentSessionToken;
+        Request request = new Request(MessageType.GET_MY_DRAFT, null, token);
+        sendRequest(request);
+    }
+
+    /**
+     * Get full map content for editing. Sends session token so server can return this user's draft POIs.
      */
     public void getMapContent(int mapId) {
-        Request request = new Request(MessageType.GET_MAP_CONTENT, mapId);
+        System.out.println("ContentManagementControl.getMapContent: requesting mapId=" + mapId);
+        String token = LoginController.currentSessionToken;
+        Request request = new Request(MessageType.GET_MAP_CONTENT, mapId, token);
+        sendRequest(request);
+    }
+
+    /**
+     * Get all POIs for a city (for adding tour stops from any map, or adding existing POI to current map).
+     */
+    public void getPoisForCity(int cityId) {
+        Request request = new Request(MessageType.GET_POIS_FOR_CITY, cityId);
         sendRequest(request);
     }
 
@@ -193,10 +218,27 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
     // ==================== Batch Submit ====================
 
     /**
-     * Submit multiple changes in a single transaction.
+     * Save map changes as draft only. Uses SAVE_MAP_CHANGES so server never publishes on Save.
+     * Always sets payload draft=true so that regardless of who does it, Save always drafts.
      */
-    public void submitMapChanges(MapChanges changes) {
-        Request request = new Request(MessageType.SUBMIT_MAP_CHANGES, changes);
+    public void saveMapChanges(MapChanges changes) {
+        if (changes == null) return;
+        changes.setDraft(true);
+        String token = LoginController.currentSessionToken;
+        Request request = new Request(MessageType.SAVE_MAP_CHANGES, changes, token);
+        sendRequest(request);
+    }
+
+    /**
+     * Submit map changes (Send to manager / Publish). Use for "Send to content manager" or manager Publish.
+     * @param asDraft true = apply as draft on server (if manager); false = create requests (editor) or publish (manager)
+     */
+    public void submitMapChanges(MapChanges changes, boolean asDraft) {
+        if (changes != null) {
+            changes.setDraft(asDraft);
+        }
+        String token = LoginController.currentSessionToken;
+        Request request = new Request(MessageType.SUBMIT_MAP_CHANGES, changes, token);
         sendRequest(request);
     }
 
@@ -220,15 +262,23 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
     // ==================== Internal Methods ====================
 
     private void sendRequest(Request request) {
+        if (client == null) {
+            if (callback != null) callback.onError("CONNECTION_ERROR", "Not connected to server");
+            return;
+        }
+        if (!client.ensureConnected()) {
+            if (callback != null) callback.onError("CONNECTION_ERROR", "Could not connect to server. Is the server running?");
+            return;
+        }
         try {
             System.out.println("ContentManagementControl: Sending request - " + request.getType());
             lastRequestType = request.getType();
             client.sendToServer(request);
         } catch (IOException e) {
-            System.out.println("ContentManagementControl: Error sending request");
+            System.out.println("ContentManagementControl: Error sending request: " + e.getMessage());
             e.printStackTrace();
             if (callback != null) {
-                callback.onError("CONNECTION_ERROR", "Failed to send request to server");
+                callback.onError("CONNECTION_ERROR", "Failed to send request to server. Try again or check the server is running.");
             }
         }
     }
@@ -251,6 +301,7 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
         }
 
         if (!response.isOk()) {
+            System.out.println("ContentManagementControl: response not OK, type=" + lastRequestType + ", errorCode=" + response.getErrorCode() + ", message=" + response.getErrorMessage());
             callback.onError(response.getErrorCode(), response.getErrorMessage());
             return;
         }
@@ -267,23 +318,29 @@ public class ContentManagementControl implements GCMClient.MessageHandler {
                 } else if (first instanceof MapSummary) {
                     callback.onMapsReceived((List<MapSummary>) payload);
                 } else if (first instanceof MapEditRequestDTO) {
-                    // This is the key fix - route MapEditRequestDTO lists properly
                     System.out.println("ContentManagementControl: Routing " + list.size()
                             + " MapEditRequestDTO items to callback");
                     callback.onPendingRequestsReceived((List<MapEditRequestDTO>) payload);
+                } else if (first instanceof Poi) {
+                    callback.onPoisForCityReceived((List<Poi>) payload);
                 }
             } else {
-                // Empty list - use lastRequestType to determine callback
                 if (lastRequestType == MessageType.GET_MAPS_FOR_CITY) {
                     callback.onMapsReceived(new ArrayList<>());
                 } else if (lastRequestType == MessageType.GET_PENDING_MAP_EDITS) {
                     callback.onPendingRequestsReceived(new ArrayList<>());
+                } else if (lastRequestType == MessageType.GET_POIS_FOR_CITY) {
+                    callback.onPoisForCityReceived(new ArrayList<>());
                 } else {
                     callback.onCitiesReceived(new ArrayList<>());
                 }
             }
         } else if (payload instanceof MapContent) {
-            callback.onMapContentReceived((MapContent) payload);
+            MapContent mc = (MapContent) payload;
+            System.out.println("ContentManagementControl: received MapContent mapId=" + mc.getMapId() + ", pois=" + (mc.getPois() != null ? mc.getPois().size() : "null") + ", tours=" + (mc.getTours() != null ? mc.getTours().size() : "null") + " -> onMapContentReceived");
+            callback.onMapContentReceived(mc);
+        } else if (lastRequestType == MessageType.GET_MY_DRAFT && (payload == null || payload instanceof MapEditRequestDTO)) {
+            callback.onMyDraftReceived(payload instanceof MapEditRequestDTO ? (MapEditRequestDTO) payload : null);
         } else if (payload instanceof ValidationResult) {
             callback.onValidationResult((ValidationResult) payload);
         }

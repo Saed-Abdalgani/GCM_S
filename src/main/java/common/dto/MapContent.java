@@ -16,6 +16,7 @@ public class MapContent implements Serializable {
     private int mapId;
     private int cityId;
     private String cityName;
+    private String cityDescription;
     private String mapName;
     private String shortDescription;
 
@@ -27,9 +28,30 @@ public class MapContent implements Serializable {
     private String createdAt;
     private String updatedAt;
 
+    /** Pending unlinks (remove from map) – from DRAFT request, waiting for manager approval. */
+    private List<MapChanges.PoiMapLink> pendingPoiMapUnlinks;
+    /** Pending full deletions – from DRAFT request, waiting for manager approval. */
+    private List<Integer> pendingDeletedPoiIds;
+    /** Pending added tours (id=0) – from DRAFT request, awaiting manager approval. */
+    private List<TourDTO> pendingAddedTours;
+    /** Pending deleted tour IDs – from DRAFT request, awaiting manager approval. */
+    private List<Integer> pendingDeletedTourIds;
+    /** Full DRAFT MapChanges when loading – used to restore pendingChanges on client. */
+    private MapChanges pendingDraftChanges;
+
+    /** When non-null, this map is the tour route map for that tour (POIs + segments for drawing lines). */
+    private Integer tourId;
+    /** Segment list for tour maps: from/to coords and distance for each leg (including circle back). */
+    private List<TourSegmentDTO> tourSegments;
+
     public MapContent() {
         this.pois = new ArrayList<>();
         this.tours = new ArrayList<>();
+        this.tourSegments = new ArrayList<>();
+        this.pendingPoiMapUnlinks = new ArrayList<>();
+        this.pendingDeletedPoiIds = new ArrayList<>();
+        this.pendingAddedTours = new ArrayList<>();
+        this.pendingDeletedTourIds = new ArrayList<>();
     }
 
     public MapContent(int mapId, int cityId, String cityName, String mapName, String shortDescription) {
@@ -40,7 +62,17 @@ public class MapContent implements Serializable {
         this.shortDescription = shortDescription;
         this.pois = new ArrayList<>();
         this.tours = new ArrayList<>();
+        this.tourSegments = new ArrayList<>();
+        this.pendingPoiMapUnlinks = new ArrayList<>();
+        this.pendingDeletedPoiIds = new ArrayList<>();
+        this.pendingAddedTours = new ArrayList<>();
+        this.pendingDeletedTourIds = new ArrayList<>();
     }
+
+    public Integer getTourId() { return tourId; }
+    public void setTourId(Integer tourId) { this.tourId = tourId; }
+    public List<TourSegmentDTO> getTourSegments() { return tourSegments != null ? tourSegments : new ArrayList<>(); }
+    public void setTourSegments(List<TourSegmentDTO> tourSegments) { this.tourSegments = tourSegments != null ? tourSegments : new ArrayList<>(); }
 
     // Add methods
     public void addPoi(Poi poi) {
@@ -74,6 +106,14 @@ public class MapContent implements Serializable {
 
     public void setCityName(String cityName) {
         this.cityName = cityName;
+    }
+
+    public String getCityDescription() {
+        return cityDescription;
+    }
+
+    public void setCityDescription(String cityDescription) {
+        this.cityDescription = cityDescription;
     }
 
     public String getMapName() {
@@ -122,6 +162,46 @@ public class MapContent implements Serializable {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<MapChanges.PoiMapLink> getPendingPoiMapUnlinks() {
+        return pendingPoiMapUnlinks != null ? pendingPoiMapUnlinks : new ArrayList<>();
+    }
+
+    public void setPendingPoiMapUnlinks(List<MapChanges.PoiMapLink> pendingPoiMapUnlinks) {
+        this.pendingPoiMapUnlinks = pendingPoiMapUnlinks != null ? pendingPoiMapUnlinks : new ArrayList<>();
+    }
+
+    public List<Integer> getPendingDeletedPoiIds() {
+        return pendingDeletedPoiIds != null ? pendingDeletedPoiIds : new ArrayList<>();
+    }
+
+    public void setPendingDeletedPoiIds(List<Integer> pendingDeletedPoiIds) {
+        this.pendingDeletedPoiIds = pendingDeletedPoiIds != null ? pendingDeletedPoiIds : new ArrayList<>();
+    }
+
+    public List<TourDTO> getPendingAddedTours() {
+        return pendingAddedTours != null ? pendingAddedTours : new ArrayList<>();
+    }
+
+    public void setPendingAddedTours(List<TourDTO> pendingAddedTours) {
+        this.pendingAddedTours = pendingAddedTours != null ? pendingAddedTours : new ArrayList<>();
+    }
+
+    public List<Integer> getPendingDeletedTourIds() {
+        return pendingDeletedTourIds != null ? pendingDeletedTourIds : new ArrayList<>();
+    }
+
+    public void setPendingDeletedTourIds(List<Integer> pendingDeletedTourIds) {
+        this.pendingDeletedTourIds = pendingDeletedTourIds != null ? pendingDeletedTourIds : new ArrayList<>();
+    }
+
+    public MapChanges getDraftChangesToRestore() {
+        return pendingDraftChanges;
+    }
+
+    public void setDraftChangesToRestore(MapChanges pendingDraftChanges) {
+        this.pendingDraftChanges = pendingDraftChanges;
     }
 
     @Override

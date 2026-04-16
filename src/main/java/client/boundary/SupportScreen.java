@@ -1,6 +1,8 @@
 package client.boundary;
 
 import client.GCMClient;
+import client.LoginController;
+import client.MenuNavigationHelper;
 import common.MessageType;
 import common.Request;
 import common.Response;
@@ -8,15 +10,19 @@ import common.dto.CreateTicketRequest;
 import common.dto.SupportTicketDTO;
 import common.dto.TicketMessageDTO;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.web.WebView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -30,6 +36,25 @@ import java.util.Map;
  * Allows creating tickets, viewing responses, and escalating to agents.
  */
 public class SupportScreen {
+    private static final String BACK_BTN_BASE_STYLE =
+            "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #7f8c8d; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 10; -fx-padding: 6 10;";
+    private static final String BACK_BTN_HOVER_STYLE =
+            "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #111111; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 10; -fx-padding: 6 10;";
+
+    @FXML private WebView navbarLogoView1;
+    @FXML private VBox guestDashboardPane;
+    @FXML private Button mapEditorNavBtn;
+    @FXML private Button myPurchasesNavBtn;
+    @FXML private Button profileNavBtn;
+    @FXML private Button customersNavBtn;
+    @FXML private Button pricingNavBtn;
+    @FXML private Button pricingApprovalNavBtn;
+    @FXML private Button supportNavBtn;
+    @FXML private Button agentConsoleNavBtn;
+    @FXML private Button editApprovalsNavBtn;
+    @FXML private Button reportsNavBtn;
+    @FXML private Button userManagementNavBtn;
+    private static final String NAVBAR_LOGO_SVG_RESOURCE = "/client/assets/favicon.svg";
 
     @FXML
     private ListView<SupportTicketDTO> ticketListView;
@@ -57,8 +82,24 @@ public class SupportScreen {
     private SupportTicketDTO selectedTicket;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, HH:mm");
 
+    /** Removes emoji and symbol characters from support text. */
+    private static String stripEmojis(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); ) {
+            int cp = Character.codePointAt(s, i);
+            boolean isEmoji = (cp >= 0x2600 && cp <= 0x26FF) || (cp >= 0x2700 && cp <= 0x27BF)
+                    || (cp >= 0x1F300 && cp <= 0x1F9FF);
+            if (!isEmoji) sb.appendCodePoint(cp);
+            i += Character.charCount(cp);
+        }
+        return sb.toString();
+    }
+
     @FXML
     public void initialize() {
+        applyNavbarLogoSvg();
+        MenuNavigationHelper.configureSidebarButtons(mapEditorNavBtn, myPurchasesNavBtn, profileNavBtn, customersNavBtn, pricingNavBtn, pricingApprovalNavBtn, supportNavBtn, agentConsoleNavBtn, editApprovalsNavBtn, reportsNavBtn, userManagementNavBtn);
         // Custom cell factory for ticket list
         ticketListView.setCellFactory(lv -> new ListCell<SupportTicketDTO>() {
             @Override
@@ -67,21 +108,22 @@ public class SupportScreen {
                 if (empty || ticket == null) {
                     setText(null);
                     setGraphic(null);
+                    setStyle("-fx-background-color: white;");
                 } else {
+                    setStyle("-fx-background-color: white;");
                     VBox cell = new VBox(5);
                     cell.setPadding(new Insets(10));
-                    cell.setStyle("-fx-background-color: #16213e; -fx-background-radius: 10;");
+                    cell.setStyle("-fx-background-color: transparent; -fx-background-radius: 10;");
 
-                    Label subject = new Label(ticket.getSubject());
-                    subject.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
+                    Label subject = new Label(stripEmojis(ticket.getSubject() != null ? ticket.getSubject() : ""));
+                    subject.setStyle("-fx-text-fill: #2c3e50; -fx-font-size: 13px; -fx-font-weight: bold;");
 
-                    Label status = new Label(ticket.getStatusDisplay() + " • " +
+                    Label status = new Label(stripEmojis(ticket.getStatusDisplay()) + " - " +
                             dateFormat.format(ticket.getCreatedAt()));
-                    status.setStyle("-fx-text-fill: #888; -fx-font-size: 11px;");
+                    status.setStyle("-fx-text-fill: #555; -fx-font-size: 11px;");
 
                     cell.getChildren().addAll(subject, status);
                     setGraphic(cell);
-                    setStyle("-fx-background-color: transparent;");
                 }
             }
         });
@@ -183,41 +225,44 @@ public class SupportScreen {
         bubble.setPadding(new Insets(10, 15, 10, 15));
         bubble.setMaxWidth(500);
 
-        // Style based on sender type
-        String bgColor, textColor, alignment;
+        // Style based on sender type: bot = transparent + black; agent/customer = slight gray + black
+        String bgStyle;
+        String textColor = "black";
+        String alignment;
+        String timeColor;
         switch (msg.getSenderType()) {
-            case CUSTOMER:
-                bgColor = "#00b894";
-                textColor = "white";
-                alignment = "CENTER_RIGHT";
-                break;
             case BOT:
-                bgColor = "#3498db";
-                textColor = "white";
+                bgStyle = "-fx-background-color: transparent;";
                 alignment = "CENTER_LEFT";
+                timeColor = "#666666";
+                break;
+            case CUSTOMER:
+                bgStyle = "-fx-background-color: #F2F2F2;";
+                alignment = "CENTER_RIGHT";
+                timeColor = "#666666";
                 break;
             case AGENT:
-                bgColor = "#9b59b6";
-                textColor = "white";
+                bgStyle = "-fx-background-color: #F2F2F2;";
                 alignment = "CENTER_LEFT";
+                timeColor = "#666666";
                 break;
             default:
-                bgColor = "#333";
-                textColor = "white";
+                bgStyle = "-fx-background-color: #F2F2F2;";
                 alignment = "CENTER_LEFT";
+                timeColor = "#666666";
         }
 
-        bubble.setStyle("-fx-background-color: " + bgColor + "; -fx-background-radius: 15;");
+        bubble.setStyle(bgStyle + " -fx-background-radius: 15;");
 
-        Label senderLabel = new Label(msg.getSenderDisplay());
-        senderLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 10px; -fx-font-weight: bold;");
+        Label senderLabel = new Label(stripEmojis(msg.getSenderDisplay() != null ? msg.getSenderDisplay() : ""));
+        senderLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 13px; -fx-font-weight: bold;");
 
-        Label messageLabel = new Label(msg.getMessage());
+        Label messageLabel = new Label(stripEmojis(msg.getMessage() != null ? msg.getMessage() : ""));
         messageLabel.setWrapText(true);
-        messageLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 13px;");
+        messageLabel.setStyle("-fx-text-fill: " + textColor + "; -fx-font-size: 16px;");
 
         Label timeLabel = new Label(dateFormat.format(msg.getCreatedAt()));
-        timeLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 9px;");
+        timeLabel.setStyle("-fx-text-fill: " + timeColor + "; -fx-font-size: 11px;");
 
         bubble.getChildren().addAll(senderLabel, messageLabel, timeLabel);
 
@@ -433,13 +478,89 @@ public class SupportScreen {
         if (message.isEmpty())
             return;
 
-        // For now, creating a new ticket is the only way customer can add messages
-        // This could be extended to add messages to existing escalated tickets
-        messageInput.clear();
-        showAlert(Alert.AlertType.INFORMATION, "Note",
-                "To add more information, please create a new ticket or escalate this one.");
+        statusLabel.setText("Sending reply...");
+        messageInput.setDisable(true);
+
+        try {
+            GCMClient client = GCMClient.getInstance();
+            Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("ticketId", selectedTicket.getId());
+            payload.put("message", message);
+
+            Request request = new Request(MessageType.CUSTOMER_REPLY, payload);
+            request.setUserId(getCurrentUserId());
+
+            // Use async send so the escalate button stays responsive if the bot is slow or doesn't answer
+            client.sendRequestAsync(request, response -> Platform.runLater(() -> {
+                messageInput.setDisable(false);
+                if (response != null && response.isOk()) {
+                    messageInput.clear();
+                    loadTicketDetails(selectedTicket.getId());
+                } else if (response != null) {
+                    showAlert(Alert.AlertType.ERROR, "Error", response.getErrorMessage());
+                } else {
+                    statusLabel.setText("Connection error or timeout");
+                }
+                statusLabel.setText("Ready");
+            }));
+        } catch (Exception e) {
+            messageInput.setDisable(false);
+            statusLabel.setText("Connection error");
+        }
     }
 
+    @FXML
+    private void handleBack(ActionEvent event) {
+        goBack();
+    }
+
+    @FXML
+    private void handleBackHoverEnter(MouseEvent event) {
+        if (event.getSource() instanceof Button button) button.setStyle(BACK_BTN_HOVER_STYLE);
+    }
+
+    @FXML
+    private void handleBackHoverExit(MouseEvent event) {
+        if (event.getSource() instanceof Button button) button.setStyle(BACK_BTN_BASE_STYLE);
+    }
+
+    private void applyNavbarLogoSvg() {
+        if (navbarLogoView1 == null) return;
+        java.net.URL svgUrl = getClass().getResource(NAVBAR_LOGO_SVG_RESOURCE);
+        if (svgUrl == null) {
+            navbarLogoView1.setVisible(false);
+            navbarLogoView1.setManaged(false);
+            return;
+        }
+        try {
+            navbarLogoView1.getEngine().load(svgUrl.toExternalForm());
+        } catch (Exception e) {
+            navbarLogoView1.setVisible(false);
+            navbarLogoView1.setManaged(false);
+        }
+    }
+
+    @FXML
+    private void toggleGuestDashboard(ActionEvent event) {
+        if (guestDashboardPane == null) return;
+        boolean nextVisible = !guestDashboardPane.isVisible();
+        guestDashboardPane.setVisible(nextVisible);
+        guestDashboardPane.setManaged(nextVisible);
+    }
+
+    @FXML private void navigateToHome(ActionEvent e) { MenuNavigationHelper.navigateToDashboard((Node) e.getSource()); }
+    @FXML private void openSearchScreenFromAction(ActionEvent e) { MenuNavigationHelper.navigateToCatalog(guestDashboardPane); }
+    @FXML private void openMapEditorFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToMapEditor(guestDashboardPane); }
+    @FXML private void openMyPurchasesFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToMyPurchases(guestDashboardPane); }
+    @FXML private void openProfileFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToProfile(guestDashboardPane); }
+    @FXML private void openAdminCustomersFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToAdminCustomers(guestDashboardPane); }
+    @FXML private void openPricingFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToPricing(guestDashboardPane); }
+    @FXML private void openPricingApprovalFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToPricingApproval(guestDashboardPane); }
+    @FXML private void openSupportFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToSupport(guestDashboardPane); }
+    @FXML private void openAgentConsoleFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToAgentConsole(guestDashboardPane); }
+    @FXML private void openEditApprovalsFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToEditApprovals(guestDashboardPane); }
+    @FXML private void openReportsFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToReports(guestDashboardPane); }
+    @FXML private void openUserManagementFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToUserManagement(guestDashboardPane); }
     @FXML
     private void goBack() {
         try {
@@ -448,6 +569,7 @@ public class SupportScreen {
             Stage stage = (Stage) ticketListView.getScene().getWindow();
             stage.setScene(new Scene(root, 1000, 700));
             stage.setTitle("GCM Dashboard");
+            stage.setMaximized(true);
         } catch (IOException e) {
             e.printStackTrace();
         }

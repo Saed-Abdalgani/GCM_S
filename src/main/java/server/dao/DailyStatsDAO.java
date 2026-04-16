@@ -8,11 +8,36 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DailyStatsDAO {
+
+    static {
+        createTable();
+    }
+
+    private static void createTable() {
+        String sql = "CREATE TABLE IF NOT EXISTS daily_stats (" +
+                "stat_date DATE NOT NULL, " +
+                "city_id INT NOT NULL, " +
+                "maps_count INT NOT NULL DEFAULT 0, " +
+                "one_time_purchases INT NOT NULL DEFAULT 0, " +
+                "subscriptions INT NOT NULL DEFAULT 0, " +
+                "renewals INT NOT NULL DEFAULT 0, " +
+                "views INT NOT NULL DEFAULT 0, " +
+                "downloads INT NOT NULL DEFAULT 0, " +
+                "PRIMARY KEY (stat_date, city_id)" +
+                ")";
+        try (Connection conn = DBConnector.getConnection();
+             Statement stmt = conn != null ? conn.createStatement() : null) {
+            if (stmt != null) stmt.execute(sql);
+        } catch (SQLException e) {
+            System.err.println("DailyStatsDAO: Error creating daily_stats table: " + e.getMessage());
+        }
+    }
 
     // Metrics that can be incremented
     public enum Metric {
@@ -167,6 +192,48 @@ public class DailyStatsDAO {
             }
 
         } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return results;
+    }
+
+    /**
+     * Per-city totals over a date range for "all cities" report (histogram grouped by city).
+     * Returns one DailyStat per city with summed metrics; date is set to from for display.
+     */
+    public static List<DailyStat> getPerCityTotals(LocalDate from, LocalDate to) {
+        List<DailyStat> results = new ArrayList<>();
+        String query = "SELECT city_id, " +
+                "SUM(maps_count) as maps_count, " +
+                "SUM(one_time_purchases) as one_time_purchases, " +
+                "SUM(subscriptions) as subscriptions, " +
+                "SUM(renewals) as renewals, " +
+                "SUM(views) as views, " +
+                "SUM(downloads) as downloads " +
+                "FROM daily_stats " +
+                "WHERE stat_date BETWEEN ? AND ? AND city_id > 0 " +
+                "GROUP BY city_id " +
+                "ORDER BY city_id";
+        try (Connection conn = DBConnector.getConnection()) {
+            if (conn == null) return results;
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setDate(1, Date.valueOf(from));
+                stmt.setDate(2, Date.valueOf(to));
+                ResultSet rs = stmt.executeQuery();
+                while (rs.next()) {
+                    results.add(new DailyStat(
+                            from,
+                            rs.getInt("city_id"),
+                            rs.getInt("maps_count"),
+                            rs.getInt("one_time_purchases"),
+                            rs.getInt("subscriptions"),
+                            rs.getInt("renewals"),
+                            rs.getInt("views"),
+                            rs.getInt("downloads")));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error getting per-city stats: " + e.getMessage());
             e.printStackTrace();
         }
         return results;

@@ -6,23 +6,21 @@
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.LoginController"
-      style="-fx-background-color: linear-gradient(to bottom, #667eea, #764ba2);">
-    <padding>
-        <Insets bottom="50.0" left="50.0" right="50.0" top="50.0" />
-    </padding>
-
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.LoginController"
+           style="-fx-background-color: #f5f6fa;">
     <children>
         <!-- Login Card Container -->
-        <VBox alignment="CENTER" spacing="25.0" 
+        <VBox alignment="CENTER" spacing="12.0" 
               style="-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 20, 0.3, 0, 5);"
-              prefWidth="350.0">
+              prefWidth="400.0" maxWidth="400.0" maxHeight="-Infinity"
+              stylesheets="@green-focus.css">
             <padding>
-                <Insets bottom="40.0" left="40.0" right="40.0" top="40.0" />
+                <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
             </padding>
             
             <children>
@@ -40,7 +38,7 @@
                     <Label text="Username" style="-fx-text-fill: #34495e; -fx-font-size: 13px; -fx-font-weight: bold;" />
                     <TextField fx:id="usernameField" 
                                promptText="Enter username (3-20 characters)"
-                               prefWidth="270.0" prefHeight="40.0"
+                               maxWidth="1.7976931348623157E308" prefHeight="40.0"
                                style="-fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
                     <Label fx:id="usernameErrorLabel" 
                            style="-fx-text-fill: #e74c3c; -fx-font-size: 11px;" 
@@ -50,10 +48,20 @@
                 <!-- Password Section -->
                 <VBox spacing="8.0" alignment="CENTER_LEFT">
                     <Label text="Password" style="-fx-text-fill: #34495e; -fx-font-size: 13px; -fx-font-weight: bold;" />
-                    <PasswordField fx:id="passwordField" 
+                    <StackPane maxWidth="1.7976931348623157E308" prefHeight="40.0">
+                        <PasswordField fx:id="passwordField" 
+                                       promptText="Enter password (4-30 characters)"
+                                       maxWidth="1.7976931348623157E308" prefHeight="40.0"
+                                       style="-fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 44 8 12;" />
+                        <TextField fx:id="passwordVisibleField" 
                                    promptText="Enter password (4-30 characters)"
-                                   prefWidth="270.0" prefHeight="40.0"
-                                   style="-fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
+                                   maxWidth="1.7976931348623157E308" prefHeight="40.0"
+                                   style="-fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 44 8 12;"
+                                   visible="false" managed="false" />
+                        <Button fx:id="passwordToggleBtn" text="" onAction="#togglePasswordVisibility"
+                                style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 0 10 0 0; -fx-min-width: 36; -fx-pref-height: 40; -fx-min-height: 40;"
+                                />
+                    </StackPane>
                     <Label fx:id="passwordErrorLabel" 
                            style="-fx-text-fill: #e74c3c; -fx-font-size: 11px;" 
                            text="" />
@@ -64,19 +72,16 @@
                         mnemonicParsing="false" 
                         onAction="#handleLogin"
                         text="Login"
-                        prefWidth="270.0" prefHeight="45.0"
-                        style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" />
-
-                <!-- Divider with "or" text -->
-                <Label text="─────── or ───────" style="-fx-text-fill: #bdc3c7; -fx-font-size: 12px;" />
+                        maxWidth="1.7976931348623157E308" prefHeight="40.0"
+                        style="-fx-background-color: #00712d; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" />
 
                 <!-- Continue as Guest Button -->
                 <Button fx:id="guestButton" 
                         mnemonicParsing="false" 
                         onAction="#handleGuestLogin"
                         text="Continue as Guest"
-                        prefWidth="270.0" prefHeight="40.0"
-                        style="-fx-background-color: transparent; -fx-text-fill: #7f8c8d; -fx-font-size: 13px; -fx-border-color: #bdc3c7; -fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" />
+                        maxWidth="1.7976931348623157E308" prefHeight="40.0"
+                        style="-fx-background-color: transparent; -fx-text-fill: #7f8c8d; -fx-font-size: 14px; -fx-border-color: #bdc3c7; -fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" />
 
 
                 <!-- Status Message -->
@@ -86,25 +91,15 @@
                        wrapText="true"
                        textAlignment="CENTER" />
                 
-                <!-- Browse Catalog Button (No Login Required) -->
-                <Label text="─────── browse ───────" style="-fx-text-fill: #bdc3c7; -fx-font-size: 12px;" />
-                
-                <Button fx:id="catalogButton" 
-                        mnemonicParsing="false" 
-                        onAction="#handleBrowseCatalog"
-                        text="🔍 Browse City Catalog"
-                        prefWidth="270.0" prefHeight="40.0"
-                        style="-fx-background-color: #16213e; -fx-text-fill: #667eea; -fx-font-size: 13px; -fx-border-color: #667eea; -fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" />
-                
                 <!-- Register Link -->
                 <HBox alignment="CENTER" spacing="5.0">
                     <Label text="New user?" style="-fx-text-fill: #7f8c8d; -fx-font-size: 12px;" />
                     <Hyperlink fx:id="registerLink" 
                                text="Register here" 
                                onAction="#handleRegisterLink"
-                               style="-fx-text-fill: #667eea; -fx-font-size: 12px; -fx-font-weight: bold;" />
+                               style="-fx-text-fill: #00712d; -fx-font-size: 12px; -fx-font-weight: bold;" />
                 </HBox>
             </children>
         </VBox>
     </children>
-</VBox>
+</StackPane>

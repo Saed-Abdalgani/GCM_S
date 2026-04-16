@@ -6,6 +6,7 @@ import common.Request;
 import common.Response;
 import ocsf.server.AbstractServer;
 import ocsf.server.ConnectionToClient;
+import server.dao.CityDAO;
 import server.handler.MapEditHandler;
 import server.handler.SearchHandler;
 import server.handler.ApprovalHandler;
@@ -15,6 +16,7 @@ import server.handler.CustomerHandler;
 import server.handler.NotificationHandler;
 import server.handler.PricingHandler;
 import server.handler.SupportHandler;
+import server.handler.UserManagementHandler;
 import server.scheduler.SubscriptionScheduler;
 
 import java.io.IOException;
@@ -77,17 +79,32 @@ public class GCMServer extends AbstractServer {
                 try {
                     Response response = dispatchRequest(request, clientId);
                     System.out.println("Sending Response: " + (response.isOk() ? "OK" : "ERROR"));
-                    client.sendToClient(response);
+                    // ObjectOutputStream is not thread-safe: only one thread may send to a client
+                    // at a time
+                    synchronized (client) {
+                        client.sendToClient(response);
+                    }
                 } catch (Exception e) {
-                    System.out.println("!!! EXCEPTION in request handling: " + e.getMessage());
+                    System.out.println("!!! EXCEPTION in request handling or send: " + e.getMessage());
                     e.printStackTrace();
+                    try {
+                        Response errResponse = Response.error(request, Response.ERR_INTERNAL, "Server exception: "
+                                + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+                        synchronized (client) {
+                            client.sendToClient(errResponse);
+                        }
+                    } catch (IOException ioException) {
+                        System.out.println("Could not send error response: " + ioException.getMessage());
+                    }
                 }
                 return;
             }
 
             // ==================== LEGACY PROTOCOL (String commands) ====================
             if (msg instanceof String) {
-                handleLegacyMessage((String) msg, client);
+                synchronized (client) {
+                    handleLegacyMessage((String) msg, client);
+                }
                 return;
             }
 
@@ -150,6 +167,11 @@ public class GCMServer extends AbstractServer {
         // Purchase handlers (Phase 5)
         if (PurchaseHandler.canHandle(type)) {
             return PurchaseHandler.handle(request);
+        }
+
+        // User Management handlers (Company Manager)
+        if (UserManagementHandler.canHandle(type)) {
+            return UserManagementHandler.handle(request);
         }
 
         // Customer handlers (Phase 6)
@@ -236,11 +258,16 @@ public class GCMServer extends AbstractServer {
         // CASE 2: Get maps for a specific city (Format: "get_maps [id]")
         else if (request.startsWith("get_maps ")) {
             try {
-                int cityId = Integer.parseInt(request.split(" ")[1]);
+                String idPart = request.trim().split("\\s+")[1];
+                int cityId = Integer.parseInt(idPart);
                 ArrayList<common.Map> maps = MySQLController.getMapsForCity(cityId);
-                client.sendToClient(maps);
+                client.sendToClient(maps != null ? maps : new ArrayList<common.Map>());
+            } catch (NumberFormatException e) {
+                System.out.println("Error parsing ID for get_maps: " + e.getMessage());
+                client.sendToClient("Error: City ID must be a number.");
             } catch (Exception e) {
-                System.out.println("Error parsing ID for get_maps");
+                System.out.println("Error in get_maps: " + e.getMessage());
+                client.sendToClient("Error: Could not load maps for city - " + e.getMessage());
             }
         }
 
@@ -274,6 +301,9 @@ public class GCMServer extends AbstractServer {
         System.out.println("║  Thread pool: " + THREAD_POOL_SIZE + " request handlers                      ║");
         System.out.println("║  Protocol: Request/Response + Legacy String              ║");
         System.out.println("╚══════════════════════════════════════════════════════════╝");
+
+        // Ensure cities table has approved/created_by columns (migration)
+        CityDAO.ensureCitiesApprovalColumns();
 
         // Start subscription expiry scheduler (Phase 7)
         SubscriptionScheduler.getInstance().start();
@@ -317,6 +347,16 @@ public class GCMServer extends AbstractServer {
     // MAIN METHOD TO START THE SERVER
     public static void main(String[] args) {
         int port = 5555;
+        if (args.length > 0) {
+            try {
+                port = Integer.parseInt(args[0].trim());
+            } catch (NumberFormatException e) {
+                System.err.println("Usage: java -jar GCM-Server.jar [port]");
+                System.err.println("Invalid port, using default 5555");
+                port = 5555;
+            }
+        }
+        System.out.println("GCM server listening on 0.0.0.0:" + port + " (all network interfaces)");
         GCMServer server = new GCMServer(port);
 
         // Add shutdown hook for graceful shutdown

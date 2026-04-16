@@ -1,15 +1,30 @@
 package server.dao;
 
-import common.Poi;
-import common.dto.*;
-import org.junit.jupiter.api.*;
-import server.DBConnector;
-
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
+import common.Poi;
+import common.dto.MapChanges;
+import common.dto.MapSummary;
+import common.dto.TourDTO;
+import common.dto.TourStopDTO;
+import common.dto.ValidationResult;
+import server.DBConnector;
 
 /**
  * Tests for Map Editing DAOs.
@@ -42,7 +57,7 @@ public class MapEditDAOTest {
         assertTrue(testMapId > 0, "Map should be created with valid ID");
 
         // Verify city has map
-        List<MapSummary> maps = MapDAO.getMapsForCity(testCityId);
+        List<MapSummary> maps = MapDAO.getMapsForCity(testCityId, 0);
         assertEquals(1, maps.size(), "City should have exactly one map");
         assertEquals("Test Map", maps.get(0).getName());
 
@@ -73,7 +88,7 @@ public class MapEditDAOTest {
                 "POI should appear in map's POI list");
 
         // Create tour
-        TourDTO tour = new TourDTO(0, testCityId, "Test Tour", "A test tour", 60);
+        TourDTO tour = new TourDTO(0, testCityId, "Test Tour", "A test tour");
         testTourId = TourDAO.createTour(tour);
         assertTrue(testTourId > 0, "Tour should be created with valid ID");
 
@@ -82,7 +97,6 @@ public class MapEditDAOTest {
         stop.setTourId(testTourId);
         stop.setPoiId(testPoiId);
         stop.setStopOrder(1);
-        stop.setDurationMinutes(15);
         stop.setNotes("First stop");
 
         try (Connection conn = DBConnector.getConnection()) {
@@ -141,8 +155,8 @@ public class MapEditDAOTest {
         Poi invalidPoi = new Poi(0, testCityId, "", "", "", "", false);
         changes.getAddedPois().add(invalidPoi);
 
-        // Add tour with zero duration (invalid)
-        TourDTO invalidTour = new TourDTO(0, testCityId, "", "", 0);
+        // Add tour with empty name (invalid)
+        TourDTO invalidTour = new TourDTO(0, testCityId, "", "");
         changes.getAddedTours().add(invalidTour);
 
         // Try to delete POI that's in tour (should be caught)
@@ -159,10 +173,75 @@ public class MapEditDAOTest {
     }
 
     /**
-     * Cleanup: Delete test data
+     * Diagnostic: Draft map must stay draft after getMapsForCity (ensureTourMapsForCity must not reuse or approve it).
+     * Creates a draft map (approved=0, created_by=2), then a tour with same name so ensureTourMapsForCity runs;
+     * verifies the list still returns the user's draft with isDraft()=true.
      */
     @Test
     @Order(5)
+    @DisplayName("Draft map stays draft when tour has same name")
+    void draftMapStaysDraftWhenTourHasSameName() throws SQLException {
+        int cityId = CityDAO.createCity("DraftTestCity " + System.currentTimeMillis(), "desc", 10.0);
+        assertTrue(cityId > 0, "Need city for test");
+
+        int draftMapId;
+        try (Connection conn = DBConnector.getConnection()) {
+            assertNotNull(conn, "Need DB connection");
+            draftMapId = MapDAO.createMap(conn, cityId, "SameNameMap", "draft map", 2, false);
+        }
+        assertTrue(draftMapId > 0, "Draft map should be created");
+
+        // Diagnose: does the maps table have approved/created_by? (Required for draft vs published.)
+        boolean schemaHasApprovalColumns = false;
+        try (Connection c = DBConnector.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT approved, created_by FROM maps WHERE id = ?")) {
+            ps.setInt(1, draftMapId);
+            ResultSet rs = ps.executeQuery();
+            assertTrue(rs.next(), "Map row should exist");
+            schemaHasApprovalColumns = true;
+            int approved = rs.getInt("approved");
+            int createdBy = rs.getInt("created_by");
+            System.out.println("MapEditDAOTest: map " + draftMapId + " in DB: approved=" + approved + ", created_by=" + createdBy);
+            if (approved != 0)
+                System.out.println("MapEditDAOTest: BUG – draft map was stored with approved=1 (expected 0)");
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Unknown column 'approved'")) {
+                System.out.println("MapEditDAOTest: DIAGNOSIS – maps table has no 'approved' column. Run migration_city_map_approval.sql (or use dummy_db.sql) for draft/publish to work. Skipping draft assertions.");
+                MapDAO.deleteMap(draftMapId);
+                return;
+            }
+            throw e;
+        }
+
+        List<MapSummary> maps1 = MapDAO.getMapsForCity(cityId, 2);
+        MapSummary draftInList = maps1.stream().filter(m -> m.getId() == draftMapId).findFirst().orElse(null);
+        assertNotNull(draftInList, "Draft map should appear for creator (user 2)");
+        assertTrue(draftInList.isDraft(), "Draft map must be returned with isDraft=true");
+
+        TourDTO tour = new TourDTO(0, cityId, "SameNameMap", "tour");
+        int tourId = TourDAO.createTour(tour);
+        assertTrue(tourId > 0, "Tour should be created");
+        tour.setId(tourId);
+
+        List<MapSummary> maps2 = MapDAO.getMapsForCity(cityId, 2);
+        MapSummary forSameName = maps2.stream().filter(m -> "SameNameMap".equals(m.getName() != null ? m.getName().trim() : null)).findFirst().orElse(null);
+        assertNotNull(forSameName, "One map with name SameNameMap should appear (deduped)");
+        assertTrue(forSameName.isDraft(), "Draft must still be shown (prefer user draft over tour map); got isDraft=" + forSameName.isDraft());
+        assertEquals(draftMapId, forSameName.getId(), "The visible map must be the user's draft, not the tour map");
+
+        try (Connection conn = DBConnector.getConnection()) {
+            TourDAO.deleteTour(conn, tourId);
+        }
+        MapDAO.deleteMap(draftMapId);
+        CityDAO.deleteCity(cityId);
+        System.out.println("✓ Draft-stays-draft diagnostic passed");
+    }
+
+    /**
+     * Cleanup: Delete test data
+     */
+    @Test
+    @Order(6)
     @DisplayName("Cleanup test data")
     void cleanup() throws SQLException {
         // First delete tour (which frees the POI)
@@ -175,10 +254,9 @@ public class MapEditDAOTest {
             PoiDAO.deletePoi(conn, testPoiId);
         }
 
-        // Delete map
+        // Delete map then city (tests create their own city; remove it so it doesn't appear in app)
         MapDAO.deleteMap(testMapId);
-
-        // Note: We don't delete the city as other maps might exist
+        CityDAO.deleteCity(testCityId);
 
         System.out.println("✓ Cleanup complete");
     }
@@ -200,9 +278,6 @@ public class MapEditDAOTest {
             TourDTO tour = changes.getAddedTours().get(i);
             if (tour.getName() == null || tour.getName().trim().isEmpty()) {
                 result.addError("addedTour[" + i + "].name", "Tour name is required");
-            }
-            if (tour.getEstimatedDurationMinutes() <= 0) {
-                result.addError("addedTour[" + i + "].duration", "Duration must be > 0");
             }
         }
 

@@ -25,31 +25,43 @@ public class SearchDAO {
     public static List<CitySearchResult> getCitiesCatalog() {
         List<CitySearchResult> results = new ArrayList<>();
 
-        String cityQuery = "SELECT c.id, c.name, c.description, c.price, " +
-                "(SELECT COUNT(*) FROM maps WHERE city_id = c.id) as map_count " +
-                "FROM cities c ORDER BY c.name";
-
         try (Connection conn = DBConnector.getConnection()) {
             if (conn == null) {
                 System.out.println("SearchDAO: Database connection failed");
                 return results;
             }
 
-            PreparedStatement stmt = conn.prepareStatement(cityQuery);
-            ResultSet rs = stmt.executeQuery();
+            // Only show cities that have at least one approved map (don't show city if first/only map is not approved yet)
+            String cityQuery = "SELECT c.id, c.name, c.description, c.price, " +
+                    "(SELECT COUNT(DISTINCT TRIM(m2.name)) FROM maps m2 WHERE m2.city_id = c.id AND m2.approved = 1) as map_count " +
+                    "FROM cities c WHERE (c.approved = 1 OR c.approved IS NULL) " +
+                    "AND EXISTS (SELECT 1 FROM maps m WHERE m.city_id = c.id AND m.approved = 1) ORDER BY c.name";
 
-            while (rs.next()) {
-                CitySearchResult cityResult = new CitySearchResult(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("description"),
-                        rs.getDouble("price"));
-
-                // Get maps for this city
-                List<MapSummary> maps = getMapsForCity(conn, rs.getInt("id"));
-                cityResult.setMaps(maps);
-
-                results.add(cityResult);
+            try (PreparedStatement stmt = conn.prepareStatement(cityQuery);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    CitySearchResult cityResult = new CitySearchResult(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("description"),
+                            rs.getDouble("price"));
+                    int cityId = rs.getInt("id");
+                    List<MapSummary> maps;
+                    try {
+                        maps = getMapsForCity(conn, cityId);
+                    } catch (SQLException e) {
+                        try {
+                            maps = getMapsForCityLegacy(conn, cityId);
+                        } catch (SQLException e2) {
+                            maps = new ArrayList<>();
+                        }
+                    }
+                    cityResult.setMaps(maps);
+                    if (!maps.isEmpty()) results.add(cityResult);
+                }
+            } catch (SQLException e) {
+                // Fallback when cities/maps approved column doesn't exist (no migration run yet)
+                return getCitiesCatalogLegacy();
             }
 
             System.out.println("SearchDAO: Retrieved " + results.size() + " cities for catalog");
@@ -59,6 +71,35 @@ public class SearchDAO {
             e.printStackTrace();
         }
 
+        return results;
+    }
+
+    /** Catalog without approved filter (when cities/maps tables have no approved column). Don't show cities with no maps. */
+    private static List<CitySearchResult> getCitiesCatalogLegacy() {
+        List<CitySearchResult> results = new ArrayList<>();
+        String cityQuery = "SELECT c.id, c.name, c.description, c.price, " +
+                "(SELECT COUNT(DISTINCT TRIM(name)) FROM maps WHERE city_id = c.id) as map_count " +
+                "FROM cities c WHERE EXISTS (SELECT 1 FROM maps m WHERE m.city_id = c.id) ORDER BY c.name";
+        try (Connection conn = DBConnector.getConnection()) {
+            if (conn == null) return results;
+            try (PreparedStatement stmt = conn.prepareStatement(cityQuery);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    CitySearchResult cityResult = new CitySearchResult(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("description"),
+                            rs.getDouble("price"));
+                    List<MapSummary> maps = getMapsForCityLegacy(conn, rs.getInt("id"));
+                    cityResult.setMaps(maps);
+                    if (!maps.isEmpty()) results.add(cityResult);
+                }
+            }
+            System.out.println("SearchDAO: Retrieved " + results.size() + " cities for catalog (legacy)");
+        } catch (SQLException e) {
+            System.out.println("SearchDAO: Error getting cities catalog (legacy)");
+            e.printStackTrace();
+        }
         return results;
     }
 
@@ -77,29 +118,41 @@ public class SearchDAO {
 
         String query = "SELECT c.id, c.name, c.description, c.price " +
                 "FROM cities c " +
-                "WHERE LOWER(c.name) LIKE LOWER(?) " +
+                "WHERE LOWER(TRIM(c.name)) LIKE ? AND (c.approved = 1 OR c.approved IS NULL) " +
+                "AND EXISTS (SELECT 1 FROM maps m WHERE m.city_id = c.id AND m.approved = 1) " +
                 "ORDER BY c.name";
 
         try (Connection conn = DBConnector.getConnection()) {
             if (conn == null)
                 return results;
 
-            PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.setString(1, "%" + cityName.trim() + "%");
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                CitySearchResult cityResult = new CitySearchResult(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("description"),
-                        rs.getDouble("price"));
-
-                // Get maps for this city
-                List<MapSummary> maps = getMapsForCity(conn, rs.getInt("id"));
-                cityResult.setMaps(maps);
-
-                results.add(cityResult);
+            String pattern = "%" + cityName.trim().toLowerCase() + "%";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setString(1, pattern);
+                ResultSet rs = stmt.executeQuery();
+                while (rs.next()) {
+                    CitySearchResult cityResult = new CitySearchResult(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("description"),
+                            rs.getDouble("price"));
+                    int cityId = rs.getInt("id");
+                    List<MapSummary> maps;
+                    try {
+                        maps = getMapsForCity(conn, cityId);
+                    } catch (SQLException e) {
+                        try {
+                            maps = getMapsForCityLegacy(conn, cityId);
+                        } catch (SQLException e2) {
+                            maps = new ArrayList<>();
+                        }
+                    }
+                    cityResult.setMaps(maps);
+                    if (!maps.isEmpty()) results.add(cityResult);
+                }
+            } catch (SQLException e) {
+                // Fallback when approved column doesn't exist
+                return searchByCityNameLegacy(cityName);
             }
 
             System.out.println("SearchDAO: Found " + results.size() + " cities matching '" + cityName + "'");
@@ -109,6 +162,34 @@ public class SearchDAO {
             e.printStackTrace();
         }
 
+        return results;
+    }
+
+    /** Search by city name without approved filter (when column doesn't exist). Don't show cities with no maps. */
+    private static List<CitySearchResult> searchByCityNameLegacy(String cityName) {
+        List<CitySearchResult> results = new ArrayList<>();
+        String pattern = "%" + cityName.trim().toLowerCase() + "%";
+        String query = "SELECT c.id, c.name, c.description, c.price FROM cities c " +
+                "WHERE LOWER(TRIM(c.name)) LIKE ? AND EXISTS (SELECT 1 FROM maps m WHERE m.city_id = c.id) ORDER BY c.name";
+        try (Connection conn = DBConnector.getConnection()) {
+            if (conn == null) return results;
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setString(1, pattern);
+                ResultSet rs = stmt.executeQuery();
+                while (rs.next()) {
+                    CitySearchResult cityResult = new CitySearchResult(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("description"),
+                            rs.getDouble("price"));
+                    List<MapSummary> maps = getMapsForCityLegacy(conn, rs.getInt("id"));
+                    cityResult.setMaps(maps);
+                    if (!maps.isEmpty()) results.add(cityResult);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return results;
     }
 
@@ -128,20 +209,21 @@ public class SearchDAO {
 
         // First, find all maps that contain matching POIs
         String query = "SELECT DISTINCT c.id as city_id, c.name as city_name, c.description as city_desc, c.price, " +
-                "       m.id as map_id, m.name as map_name, m.short_description as map_desc " +
+                "       m.id as map_id, m.name as map_name, m.short_description as map_desc, COALESCE(m.tour_id, 0) as tour_id " +
                 "FROM cities c " +
                 "JOIN maps m ON m.city_id = c.id " +
-                "JOIN map_pois mp ON mp.map_id = m.id " +
+                "JOIN map_pois mp ON mp.map_id = m.id AND mp.approved = 1 " +
                 "JOIN pois p ON p.id = mp.poi_id " +
-                "WHERE LOWER(p.name) LIKE LOWER(?) " +
+                "WHERE LOWER(TRIM(p.name)) LIKE ? " +
                 "ORDER BY c.name, m.name";
 
         try (Connection conn = DBConnector.getConnection()) {
             if (conn == null)
                 return results;
 
+            String pattern = "%" + poiName.trim().toLowerCase() + "%";
             PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.setString(1, "%" + poiName.trim() + "%");
+            stmt.setString(1, pattern);
             ResultSet rs = stmt.executeQuery();
 
             // Group results by city
@@ -162,7 +244,7 @@ public class SearchDAO {
 
                 // Get POI and tour counts for this map
                 int mapId = rs.getInt("map_id");
-                int poiCount = getPoiCountForMap(conn, mapId);
+                int poiCount = getPoiCountForMapSafe(conn, mapId);
                 int tourCount = getTourCountForCity(conn, cityId);
 
                 MapSummary mapSummary = new MapSummary(
@@ -171,6 +253,11 @@ public class SearchDAO {
                         rs.getString("map_desc"),
                         poiCount,
                         tourCount);
+                try {
+                    int tid = rs.getInt("tour_id");
+                    mapSummary.setTourId(tid > 0 ? tid : null);
+                } catch (SQLException ignored) {
+                }
 
                 cityResult.addMap(mapSummary);
             }
@@ -211,22 +298,24 @@ public class SearchDAO {
         }
 
         String query = "SELECT DISTINCT c.id as city_id, c.name as city_name, c.description as city_desc, c.price, " +
-                "       m.id as map_id, m.name as map_name, m.short_description as map_desc " +
+                "       m.id as map_id, m.name as map_name, m.short_description as map_desc, COALESCE(m.tour_id, 0) as tour_id " +
                 "FROM cities c " +
                 "JOIN maps m ON m.city_id = c.id " +
-                "JOIN map_pois mp ON mp.map_id = m.id " +
+                "JOIN map_pois mp ON mp.map_id = m.id AND mp.approved = 1 " +
                 "JOIN pois p ON p.id = mp.poi_id " +
-                "WHERE LOWER(c.name) LIKE LOWER(?) " +
-                "  AND LOWER(p.name) LIKE LOWER(?) " +
+                "WHERE LOWER(TRIM(c.name)) LIKE ? " +
+                "  AND LOWER(TRIM(p.name)) LIKE ? " +
                 "ORDER BY c.name, m.name";
 
         try (Connection conn = DBConnector.getConnection()) {
             if (conn == null)
                 return results;
 
+            String cityPattern = "%" + cityName.trim().toLowerCase() + "%";
+            String poiPattern = "%" + (poiName != null ? poiName.trim() : "").toLowerCase() + "%";
             PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.setString(1, "%" + cityName.trim() + "%");
-            stmt.setString(2, "%" + poiName.trim() + "%");
+            stmt.setString(1, cityPattern);
+            stmt.setString(2, poiPattern);
             ResultSet rs = stmt.executeQuery();
 
             // Group results by city
@@ -246,7 +335,7 @@ public class SearchDAO {
                 }
 
                 int mapId = rs.getInt("map_id");
-                int poiCount = getPoiCountForMap(conn, mapId);
+                int poiCount = getPoiCountForMapSafe(conn, mapId);
                 int tourCount = getTourCountForCity(conn, cityId);
 
                 MapSummary mapSummary = new MapSummary(
@@ -255,6 +344,11 @@ public class SearchDAO {
                         rs.getString("map_desc"),
                         poiCount,
                         tourCount);
+                try {
+                    int tid = rs.getInt("tour_id");
+                    mapSummary.setTourId(tid > 0 ? tid : null);
+                } catch (SQLException ignored) {
+                }
 
                 cityResult.addMap(mapSummary);
             }
@@ -279,9 +373,10 @@ public class SearchDAO {
     private static List<MapSummary> getMapsForCity(Connection conn, int cityId) throws SQLException {
         List<MapSummary> maps = new ArrayList<>();
 
-        String query = "SELECT m.id, m.name, m.short_description, " +
-                "(SELECT COUNT(*) FROM map_pois WHERE map_id = m.id) as poi_count " +
-                "FROM maps m WHERE m.city_id = ? ORDER BY m.name";
+        // Catalog: only approved maps (customers must not see draft/unapproved maps)
+        String query = "SELECT m.id, m.name, m.short_description, COALESCE(m.tour_id, 0) as tour_id, " +
+                "(SELECT COUNT(*) FROM map_pois mp WHERE mp.map_id = m.id AND mp.approved = 1) as poi_count " +
+                "FROM maps m WHERE m.city_id = ? AND m.approved = 1 ORDER BY m.name";
 
         PreparedStatement stmt = conn.prepareStatement(query);
         stmt.setInt(1, cityId);
@@ -290,33 +385,86 @@ public class SearchDAO {
         int tourCount = getTourCountForCity(conn, cityId);
 
         while (rs.next()) {
-            maps.add(new MapSummary(
+            MapSummary s = new MapSummary(
                     rs.getInt("id"),
                     rs.getString("name"),
                     rs.getString("short_description"),
                     rs.getInt("poi_count"),
-                    tourCount));
+                    tourCount);
+            try {
+                int tid = rs.getInt("tour_id");
+                s.setTourId(tid > 0 ? tid : null);
+            } catch (SQLException ignored) {
+            }
+            maps.add(s);
         }
 
         return maps;
     }
 
+    /** Maps for city when cities/maps approved columns may be missing; POI count still excludes draft (approved=0) when map_pois.approved exists. */
+    private static List<MapSummary> getMapsForCityLegacy(Connection conn, int cityId) throws SQLException {
+        List<MapSummary> maps = new ArrayList<>();
+        String poiCountExpr = "(SELECT COUNT(*) FROM map_pois mp WHERE mp.map_id = m.id AND mp.approved = 1)";
+        String query = "SELECT m.id, m.name, m.short_description, " +
+                poiCountExpr + " as poi_count " +
+                "FROM maps m WHERE m.city_id = ? ORDER BY m.name";
+        try {
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setInt(1, cityId);
+            ResultSet rs = stmt.executeQuery();
+            int tourCount = getTourCountForCity(conn, cityId);
+            while (rs.next()) {
+                MapSummary s = new MapSummary(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("short_description"),
+                        rs.getInt("poi_count"),
+                        tourCount);
+                // Try to resolve tour_id if the column exists (older DBs may not have it)
+                try (PreparedStatement tStmt = conn.prepareStatement("SELECT tour_id FROM maps WHERE id = ?")) {
+                    tStmt.setInt(1, rs.getInt("id"));
+                    ResultSet tRs = tStmt.executeQuery();
+                    if (tRs.next()) {
+                        Integer tidObj = (Integer) tRs.getObject(1);
+                        s.setTourId(tidObj != null && tidObj > 0 ? tidObj : null);
+                    }
+                } catch (SQLException ignored) {
+                }
+                maps.add(s);
+            }
+            return maps;
+        } catch (SQLException e) {
+            throw e;
+        }
+    }
+
     /**
-     * Get POI count for a specific map.
+     * Get POI count for a specific map (approved only; draft POIs excluded).
+     * Returns 0 if the approved column does not exist.
      */
     private static int getPoiCountForMap(Connection conn, int mapId) throws SQLException {
-        String query = "SELECT COUNT(*) FROM map_pois WHERE map_id = ?";
+        String query = "SELECT COUNT(*) FROM map_pois WHERE map_id = ? AND approved = 1";
         PreparedStatement stmt = conn.prepareStatement(query);
         stmt.setInt(1, mapId);
         ResultSet rs = stmt.executeQuery();
         return rs.next() ? rs.getInt(1) : 0;
     }
 
+    private static int getPoiCountForMapSafe(Connection conn, int mapId) {
+        try {
+            return getPoiCountForMap(conn, mapId);
+        } catch (SQLException e) {
+            return 0;
+        }
+    }
+
     /**
-     * Get tour count for a city.
+     * Get tour count for a city (only tours that have at least one stop = published, not draft).
+     * Draft tours (0 stops) are excluded so they do not appear in the catalog.
      */
     private static int getTourCountForCity(Connection conn, int cityId) throws SQLException {
-        String query = "SELECT COUNT(*) FROM tours WHERE city_id = ?";
+        String query = "SELECT COUNT(*) FROM tours t WHERE t.city_id = ? AND EXISTS (SELECT 1 FROM tour_stops ts WHERE ts.tour_id = t.id LIMIT 1)";
         PreparedStatement stmt = conn.prepareStatement(query);
         stmt.setInt(1, cityId);
         ResultSet rs = stmt.executeQuery();
@@ -331,7 +479,7 @@ public class SearchDAO {
 
         String query = "SELECT p.* FROM pois p " +
                 "JOIN map_pois mp ON mp.poi_id = p.id " +
-                "WHERE mp.map_id = ? " +
+                "WHERE mp.map_id = ? AND mp.approved = 1 " +
                 "ORDER BY mp.display_order";
 
         try (Connection conn = DBConnector.getConnection()) {

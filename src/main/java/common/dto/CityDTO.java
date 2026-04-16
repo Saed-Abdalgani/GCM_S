@@ -14,6 +14,8 @@ public class CityDTO implements Serializable {
     private String description;
     private double price;
     private int mapCount;
+    /** True when city is draft (not yet approved); show [Draft] in UI. */
+    private boolean draft;
 
     public CityDTO() {
     }
@@ -67,9 +69,17 @@ public class CityDTO implements Serializable {
         this.mapCount = mapCount;
     }
 
+    public boolean isDraft() {
+        return draft;
+    }
+
+    public void setDraft(boolean draft) {
+        this.draft = draft;
+    }
+
     @Override
     public String toString() {
-        return name + " (" + mapCount + " maps)";
+        return "[ID: " + id + "] " + name + " (" + mapCount + " maps)";
     }
 
     @Override

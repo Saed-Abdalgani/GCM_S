@@ -2,95 +2,117 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="15.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.RegistrationController"
-      style="-fx-background-color: linear-gradient(to bottom, #667eea, #764ba2);">
-    <padding>
-        <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
-    </padding>
-
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.RegistrationController"
+           style="-fx-background-color: #f5f6fa;">
     <children>
         <!-- Registration Card Container -->
-        <VBox alignment="CENTER" spacing="15.0" 
+        <VBox alignment="CENTER" spacing="8.0" 
               style="-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 20, 0.3, 0, 5);"
-              prefWidth="400.0">
+              prefWidth="420.0" maxWidth="420.0" maxHeight="-Infinity"
+              stylesheets="@green-focus.css">
             <padding>
-                <Insets bottom="30.0" left="35.0" right="35.0" top="30.0" />
+                <Insets bottom="25.0" left="40.0" right="40.0" top="25.0" />
             </padding>
             
             <children>
                 <!-- Title -->
                 <Label text="Create Account" style="-fx-text-fill: #2c3e50;">
                     <font>
-                        <Font name="System Bold" size="26.0" />
+                        <Font name="System Bold" size="24.0" />
                     </font>
                 </Label>
                 
                 <Label text="Register as a new customer" style="-fx-text-fill: #7f8c8d; -fx-font-size: 12px;" />
 
                 <!-- Username Section -->
-                <VBox spacing="5.0" alignment="CENTER_LEFT">
+                <VBox spacing="3.0" alignment="CENTER_LEFT">
                     <Label text="Username *" style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
                     <TextField fx:id="usernameField" 
                                promptText="3-20 characters"
-                               prefWidth="330.0" prefHeight="35.0"
-                               style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
+                               prefHeight="35.0"
+                               style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 6 12 6 12;" />
                     <Label fx:id="usernameErrorLabel" style="-fx-text-fill: #e74c3c; -fx-font-size: 10px;" text="" />
                 </VBox>
 
                 <!-- Email Section -->
-                <VBox spacing="5.0" alignment="CENTER_LEFT">
+                <VBox spacing="3.0" alignment="CENTER_LEFT">
                     <Label text="Email *" style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
                     <TextField fx:id="emailField" 
                                promptText="your@email.com"
-                               prefWidth="330.0" prefHeight="35.0"
-                               style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
+                               prefHeight="35.0"
+                               style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 6 12 6 12;" />
                     <Label fx:id="emailErrorLabel" style="-fx-text-fill: #e74c3c; -fx-font-size: 10px;" text="" />
                 </VBox>
 
                 <!-- Password Section -->
-                <VBox spacing="5.0" alignment="CENTER_LEFT">
+                <VBox spacing="3.0" alignment="CENTER_LEFT">
                     <Label text="Password *" style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
-                    <PasswordField fx:id="passwordField" 
+                    <StackPane maxWidth="1.7976931348623157E308" prefHeight="35.0">
+                        <PasswordField fx:id="passwordField" 
+                                       promptText="At least 4 characters"
+                                       prefHeight="35.0"
+                                       style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 6 40 6 12;" />
+                        <TextField fx:id="passwordVisibleField" 
                                    promptText="At least 4 characters"
-                                   prefWidth="330.0" prefHeight="35.0"
-                                   style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
+                                   prefHeight="35.0"
+                                   style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 6 40 6 12;"
+                                   visible="false" managed="false" />
+                        <Button fx:id="passwordToggleBtn" text="" onAction="#togglePasswordVisibility"
+                                style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 0 10 0 0; -fx-min-width: 36; -fx-pref-height: 35; -fx-min-height: 35;"
+                                />
+                    </StackPane>
                     <Label fx:id="passwordErrorLabel" style="-fx-text-fill: #e74c3c; -fx-font-size: 10px;" text="" />
                 </VBox>
 
                 <!-- Confirm Password Section -->
-                <VBox spacing="5.0" alignment="CENTER_LEFT">
+                <VBox spacing="3.0" alignment="CENTER_LEFT">
                     <Label text="Confirm Password *" style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
-                    <PasswordField fx:id="confirmPasswordField" 
+                    <StackPane maxWidth="1.7976931348623157E308" prefHeight="35.0">
+                        <PasswordField fx:id="confirmPasswordField" 
+                                       promptText="Re-enter password"
+                                       prefHeight="35.0"
+                                       style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 6 40 6 12;" />
+                        <TextField fx:id="confirmPasswordVisibleField" 
                                    promptText="Re-enter password"
-                                   prefWidth="330.0" prefHeight="35.0"
-                                   style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
+                                   prefHeight="35.0"
+                                   style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 6 40 6 12;"
+                                   visible="false" managed="false" />
+                        <Button fx:id="confirmPasswordToggleBtn" text="" onAction="#toggleConfirmPasswordVisibility"
+                                style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 0 10 0 0; -fx-min-width: 36; -fx-pref-height: 35; -fx-min-height: 35;"
+                                />
+                    </StackPane>
                     <Label fx:id="confirmPasswordErrorLabel" style="-fx-text-fill: #e74c3c; -fx-font-size: 10px;" text="" />
                 </VBox>
 
-                <!-- Phone Section (Optional) -->
-                <VBox spacing="5.0" alignment="CENTER_LEFT">
-                    <Label text="Phone (optional)" style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
+                <!-- Phone Section (Optional, 9 digits if provided) -->
+                <VBox spacing="3.0" alignment="CENTER_LEFT">
+                    <Label text="Phone (optional, 9 digits)" style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
                     <TextField fx:id="phoneField" 
-                               promptText="Your phone number"
-                               prefWidth="330.0" prefHeight="35.0"
-                               style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
+                               promptText="9 digits"
+                               prefHeight="35.0"
+                               style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 6 12 6 12;" />
+                    <Label fx:id="phoneErrorLabel" style="-fx-text-fill: #e74c3c; -fx-font-size: 10px;" text="" />
                 </VBox>
 
-                <!-- Credit Card Section (Mock) -->
-                <VBox spacing="5.0" alignment="CENTER_LEFT">
-                    <Label text="Credit Card (last 4 digits)" style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
-                    <TextField fx:id="cardLast4Field" 
-                               promptText="e.g. 4242"
-                               prefWidth="100.0" prefHeight="35.0"
-                               style="-fx-font-size: 13px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #dcdde1; -fx-border-width: 1.5; -fx-padding: 8 12 8 12;" />
+                <!-- Payment details (optional): checkbox opens Visa details popup -->
+                <VBox spacing="3.0" alignment="CENTER_LEFT">
+                    <CheckBox fx:id="addPaymentDetailsCheckBox" text="Add payment details (optional)"
+                              styleClass="white-checkbox"
+                              onAction="#onPaymentDetailsCheckboxChanged"
+                              style="-fx-text-fill: #34495e; -fx-font-size: 12px; -fx-font-weight: bold;" />
+                    <Label fx:id="paymentStatusLabel" text="No card added"
+                           style="-fx-text-fill: #95a5a6; -fx-font-size: 11px;" />
                     <Label text="(Mock payment for demo purposes)" style="-fx-text-fill: #95a5a6; -fx-font-size: 10px; -fx-font-style: italic;" />
                 </VBox>
 
@@ -99,8 +121,8 @@
                         mnemonicParsing="false" 
                         onAction="#handleRegister"
                         text="Create Account"
-                        prefWidth="330.0" prefHeight="42.0"
-                        style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" />
+                        maxWidth="1.7976931348623157E308" prefHeight="40.0"
+                        style="-fx-background-color: #00712d; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;" />
 
                 <!-- Status Message -->
                 <Label fx:id="statusLabel" 
@@ -115,9 +137,9 @@
                     <Hyperlink fx:id="loginLink" 
                                text="Login here" 
                                onAction="#handleLoginLink"
-                               style="-fx-text-fill: #667eea; -fx-font-size: 12px;" />
+                               style="-fx-text-fill: #00712d; -fx-font-size: 12px; -fx-font-weight: bold;" />
                 </HBox>
             </children>
         </VBox>
     </children>
-</VBox>
+</StackPane>

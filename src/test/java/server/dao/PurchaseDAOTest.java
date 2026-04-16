@@ -26,7 +26,7 @@ public class PurchaseDAOTest {
         assertEquals(1, info.getCityId());
         assertTrue(info.getOneTimePrice() > 0);
         assertNotNull(info.getSubscriptionPrices());
-        assertEquals(6, info.getSubscriptionPrices().size()); // 1-6 months
+        assertEquals(3, info.getSubscriptionPrices().size()); // 1, 3, 6 months (dynamic pricing)
     }
 
     @Test

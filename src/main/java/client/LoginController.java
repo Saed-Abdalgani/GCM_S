@@ -8,7 +8,11 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.geometry.Pos;
+import javafx.scene.layout.StackPane;
+import javafx.scene.web.WebView;
 import javafx.stage.Stage;
+import javafx.stage.Screen;
 
 import java.io.IOException;
 
@@ -33,6 +37,7 @@ public class LoginController implements GCMClient.MessageHandler {
     // Current logged in user info (static to share across controllers)
     public static String currentUsername;
     public static UserRole currentUserRole;
+    public static String currentRoleString; // Exact string from the database
     public static boolean isSubscribed;
     public static String currentSessionToken; // Session token for authenticated requests
     public static int currentUserId; // User ID for database operations
@@ -41,6 +46,10 @@ public class LoginController implements GCMClient.MessageHandler {
     private TextField usernameField;
     @FXML
     private PasswordField passwordField;
+    @FXML
+    private TextField passwordVisibleField;
+    @FXML
+    private Button passwordToggleBtn;
     @FXML
     private Label usernameErrorLabel;
     @FXML
@@ -55,6 +64,10 @@ public class LoginController implements GCMClient.MessageHandler {
     // Client instance
     private GCMClient client;
 
+    private static final String EYE_SVG = "/client/assets/eye.svg";
+    private static final String EYE_OFF_SVG = "/client/assets/eye-off.svg";
+    private static final int EYE_ICON_SIZE = 22;
+
     @FXML
     public void initialize() {
         // Add listeners for real-time validation feedback
@@ -65,18 +78,51 @@ public class LoginController implements GCMClient.MessageHandler {
         passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
             validatePassword(newValue);
         });
+        if (passwordVisibleField != null) {
+            passwordVisibleField.textProperty().addListener((observable, oldValue, newValue) -> {
+                validatePassword(newValue);
+            });
+        }
 
         // Initialize client connection
         try {
             client = GCMClient.getInstance();
             client.setMessageHandler(this);
-            statusLabel.setText("Connected to server");
-            statusLabel.setStyle("-fx-text-fill: #27ae60;");
+            statusLabel.setText("");
+
         } catch (IOException e) {
             statusLabel.setText("Failed to connect to server");
             statusLabel.setStyle("-fx-text-fill: #e74c3c;");
             loginButton.setDisable(true);
             guestButton.setDisable(true);
+        }
+
+        applyPasswordEyeIcon(false);
+        if (passwordToggleBtn != null && passwordToggleBtn.getParent() instanceof StackPane) {
+            StackPane.setAlignment(passwordToggleBtn, Pos.CENTER_RIGHT);
+        }
+    }
+
+    private void applyPasswordEyeIcon(boolean passwordVisible) {
+        if (passwordToggleBtn == null) return;
+        String res = passwordVisible ? EYE_OFF_SVG : EYE_SVG;
+        try (java.io.InputStream in = getClass().getResourceAsStream(res)) {
+            if (in == null) return;
+            byte[] svgBytes = in.readAllBytes();
+            String base64 = java.util.Base64.getEncoder().encodeToString(svgBytes);
+            String dataUri = "data:image/svg+xml;base64," + base64;
+            String html = "<!DOCTYPE html><html><head><style>"
+                    + "body{margin:0;padding:0;overflow:hidden;background:transparent;} "
+                    + "img{width:" + EYE_ICON_SIZE + "px;height:" + EYE_ICON_SIZE + "px;display:block;}"
+                    + "</style></head><body><img src=\"" + dataUri + "\"/></body></html>";
+            WebView wv = new WebView();
+            wv.setPrefSize(EYE_ICON_SIZE, EYE_ICON_SIZE);
+            wv.setMinSize(EYE_ICON_SIZE, EYE_ICON_SIZE);
+            wv.setMaxSize(EYE_ICON_SIZE, EYE_ICON_SIZE);
+            wv.setStyle("-fx-background-color: transparent;");
+            wv.getEngine().loadContent(html);
+            passwordToggleBtn.setGraphic(wv);
+        } catch (Exception ignored) {
         }
     }
 
@@ -124,9 +170,28 @@ public class LoginController implements GCMClient.MessageHandler {
     }
 
     @FXML
+    private void togglePasswordVisibility() {
+        if (passwordVisibleField.isVisible()) {
+            passwordField.setText(passwordVisibleField.getText());
+            passwordVisibleField.setVisible(false);
+            passwordVisibleField.setManaged(false);
+            passwordField.setVisible(true);
+            passwordField.setManaged(true);
+            applyPasswordEyeIcon(false);
+        } else {
+            passwordVisibleField.setText(passwordField.getText());
+            passwordVisibleField.setVisible(true);
+            passwordVisibleField.setManaged(true);
+            passwordField.setVisible(false);
+            passwordField.setManaged(false);
+            applyPasswordEyeIcon(true);
+        }
+    }
+
+    @FXML
     private void handleLogin() {
         String username = usernameField.getText();
-        String password = passwordField.getText();
+        String password = passwordVisibleField.isVisible() ? passwordVisibleField.getText() : passwordField.getText();
 
         if (!validateUsername(username) || !validatePassword(password)) {
             statusLabel.setText("Fix errors above");
@@ -165,6 +230,7 @@ public class LoginController implements GCMClient.MessageHandler {
             // No login command needed, just set local state
             currentUsername = "Guest";
             currentUserRole = UserRole.ANONYMOUS;
+            currentRoleString = "ANONYMOUS";
             isSubscribed = false;
 
             navigateToMainPage();
@@ -230,7 +296,10 @@ public class LoginController implements GCMClient.MessageHandler {
         isSubscribed = loginResp.isSubscribed();
 
         String role = loginResp.getRole();
+        currentRoleString = role != null ? role.toUpperCase() : "CUSTOMER";
         switch (role.toUpperCase()) {
+            case "COMPANY_MANAGER":
+            case "CONTINENT_MANAGER":
             case "CONTENT_MANAGER":
             case "MANAGER":
                 currentUserRole = UserRole.MANAGER;
@@ -267,10 +336,13 @@ public class LoginController implements GCMClient.MessageHandler {
 
         currentUsername = usernameField.getText();
         isSubscribed = subscribed;
+        currentRoleString = role.toUpperCase();
         currentSessionToken = null; // Legacy doesn't have token
         currentUserId = 0;
 
         switch (role.toUpperCase()) {
+            case "COMPANY_MANAGER":
+            case "CONTINENT_MANAGER":
             case "CONTENT_MANAGER":
             case "MANAGER":
                 currentUserRole = UserRole.MANAGER;
@@ -317,9 +389,16 @@ public class LoginController implements GCMClient.MessageHandler {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/catalog_search.fxml"));
             Parent root = loader.load();
             Stage stage = (Stage) loginButton.getScene().getWindow();
-            stage.setScene(new Scene(root));
+            double w = Screen.getPrimary().getVisualBounds().getWidth();
+            double h = Screen.getPrimary().getVisualBounds().getHeight();
+            stage.setMinWidth(1000);
+            stage.setMinHeight(700);
+            stage.setScene(new Scene(root, w, h));
             stage.setTitle("GCM - City Catalog");
-            stage.centerOnScreen();
+            stage.setWidth(w);
+            stage.setHeight(h);
+            stage.setX(Screen.getPrimary().getVisualBounds().getMinX());
+            stage.setY(Screen.getPrimary().getVisualBounds().getMinY());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -331,8 +410,11 @@ public class LoginController implements GCMClient.MessageHandler {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/register.fxml"));
             Parent root = loader.load();
             Stage stage = (Stage) loginButton.getScene().getWindow();
-            stage.setScene(new Scene(root));
+            double w = Screen.getPrimary().getVisualBounds().getWidth();
+            double h = Screen.getPrimary().getVisualBounds().getHeight();
+            stage.setScene(new Scene(root, w, h));
             stage.setTitle("GCM - Register");
+            stage.setMaximized(true);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -343,11 +425,16 @@ public class LoginController implements GCMClient.MessageHandler {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/dashboard.fxml"));
             Parent root = loader.load();
             Stage stage = (Stage) loginButton.getScene().getWindow();
-            stage.setScene(new Scene(root));
+            double w = Screen.getPrimary().getVisualBounds().getWidth();
+            double h = Screen.getPrimary().getVisualBounds().getHeight();
+            stage.setMinWidth(1000);
+            stage.setMinHeight(700);
+            stage.setScene(new Scene(root, w, h));
             stage.setTitle("GCM Dashboard - " + currentUsername);
-            stage.setWidth(1000);
-            stage.setHeight(700);
-            stage.centerOnScreen();
+            stage.setWidth(w);
+            stage.setHeight(h);
+            stage.setX(Screen.getPrimary().getVisualBounds().getMinX());
+            stage.setY(Screen.getPrimary().getVisualBounds().getMinY());
         } catch (IOException e) {
             e.printStackTrace();
         }

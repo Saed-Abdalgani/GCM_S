@@ -2,6 +2,7 @@ package client.boundary;
 
 import client.GCMClient;
 import client.LoginController;
+import client.MenuNavigationHelper;
 import common.MessageType;
 import common.Request;
 import common.Response;
@@ -16,10 +17,14 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -30,6 +35,10 @@ import java.util.List;
  * Allows ContentManager to view prices and submit pricing requests.
  */
 public class PricingScreen implements GCMClient.MessageHandler {
+    private static final String BACK_BTN_BASE_STYLE =
+            "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #7f8c8d; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 10; -fx-padding: 6 10;";
+    private static final String BACK_BTN_HOVER_STYLE =
+            "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #111111; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 10; -fx-padding: 6 10;";
 
     @FXML
     private TableView<CityPriceInfo> pricesTable;
@@ -58,6 +67,20 @@ public class PricingScreen implements GCMClient.MessageHandler {
     private Label statusLabel;
     @FXML
     private HBox pendingRequestsBox;
+    @FXML private WebView navbarLogoView1;
+    @FXML private VBox guestDashboardPane;
+    @FXML private Button mapEditorNavBtn;
+    @FXML private Button myPurchasesNavBtn;
+    @FXML private Button profileNavBtn;
+    @FXML private Button customersNavBtn;
+    @FXML private Button pricingNavBtn;
+    @FXML private Button pricingApprovalNavBtn;
+    @FXML private Button supportNavBtn;
+    @FXML private Button agentConsoleNavBtn;
+    @FXML private Button editApprovalsNavBtn;
+    @FXML private Button reportsNavBtn;
+    @FXML private Button userManagementNavBtn;
+    private static final String NAVBAR_LOGO_SVG_RESOURCE = "/client/assets/favicon.svg";
 
     private GCMClient client;
     private CityPriceInfo selectedCity;
@@ -65,6 +88,8 @@ public class PricingScreen implements GCMClient.MessageHandler {
 
     @FXML
     public void initialize() {
+        applyNavbarLogoSvg();
+        MenuNavigationHelper.configureSidebarButtons(mapEditorNavBtn, myPurchasesNavBtn, profileNavBtn, customersNavBtn, pricingNavBtn, pricingApprovalNavBtn, supportNavBtn, agentConsoleNavBtn, editApprovalsNavBtn, reportsNavBtn, userManagementNavBtn);
         System.out.println("PricingScreen: Initializing");
 
         // Setup table columns
@@ -201,6 +226,16 @@ public class PricingScreen implements GCMClient.MessageHandler {
         navigateTo("/client/dashboard.fxml", "GCM Dashboard", 1000, 700);
     }
 
+    @FXML
+    public void handleBackHoverEnter(MouseEvent event) {
+        if (event.getSource() instanceof Button button) button.setStyle(BACK_BTN_HOVER_STYLE);
+    }
+
+    @FXML
+    public void handleBackHoverExit(MouseEvent event) {
+        if (event.getSource() instanceof Button button) button.setStyle(BACK_BTN_BASE_STYLE);
+    }
+
     @Override
     public void displayMessage(Object msg) {
         Platform.runLater(() -> {
@@ -262,12 +297,49 @@ public class PricingScreen implements GCMClient.MessageHandler {
             Stage stage = (Stage) pricesTable.getScene().getWindow();
             stage.setScene(new Scene(root));
             stage.setTitle(title);
-            stage.setWidth(width);
-            stage.setHeight(height);
+            stage.setMaximized(true);
             stage.centerOnScreen();
         } catch (IOException e) {
             showError("Could not navigate to screen");
             e.printStackTrace();
         }
     }
+
+    private void applyNavbarLogoSvg() {
+        if (navbarLogoView1 == null) return;
+        java.net.URL svgUrl = getClass().getResource(NAVBAR_LOGO_SVG_RESOURCE);
+        if (svgUrl == null) {
+            navbarLogoView1.setVisible(false);
+            navbarLogoView1.setManaged(false);
+            return;
+        }
+        try {
+            navbarLogoView1.getEngine().load(svgUrl.toExternalForm());
+        } catch (Exception e) {
+            navbarLogoView1.setVisible(false);
+            navbarLogoView1.setManaged(false);
+        }
+    }
+
+    @FXML
+    private void toggleGuestDashboard(ActionEvent event) {
+        if (guestDashboardPane == null) return;
+        boolean nextVisible = !guestDashboardPane.isVisible();
+        guestDashboardPane.setVisible(nextVisible);
+        guestDashboardPane.setManaged(nextVisible);
+    }
+
+    @FXML private void navigateToHome(ActionEvent e) { MenuNavigationHelper.navigateToDashboard((Node) e.getSource()); }
+    @FXML private void openSearchScreenFromAction(ActionEvent e) { MenuNavigationHelper.navigateToCatalog(guestDashboardPane); }
+    @FXML private void openMapEditorFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToMapEditor(guestDashboardPane); }
+    @FXML private void openMyPurchasesFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToMyPurchases(guestDashboardPane); }
+    @FXML private void openProfileFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToProfile(guestDashboardPane); }
+    @FXML private void openAdminCustomersFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToAdminCustomers(guestDashboardPane); }
+    @FXML private void openPricingFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToPricing(guestDashboardPane); }
+    @FXML private void openPricingApprovalFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToPricingApproval(guestDashboardPane); }
+    @FXML private void openSupportFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToSupport(guestDashboardPane); }
+    @FXML private void openAgentConsoleFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToAgentConsole(guestDashboardPane); }
+    @FXML private void openEditApprovalsFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToEditApprovals(guestDashboardPane); }
+    @FXML private void openReportsFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToReports(guestDashboardPane); }
+    @FXML private void openUserManagementFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToUserManagement(guestDashboardPane); }
 }

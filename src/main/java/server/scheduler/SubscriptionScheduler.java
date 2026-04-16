@@ -130,6 +130,15 @@ public class SubscriptionScheduler {
                 // Determine reminder type based on days remaining
                 String reminderType = getReminderType(sub.daysUntilExpiry);
 
+                // Requirement: specifically notify 3 days before expiry (not at 2 days).
+                if ("3_DAYS".equals(reminderType) && sub.daysUntilExpiry != 3) {
+                    continue;
+                }
+                // Keep the 1-day reminder behavior as-is, if present.
+                if ("1_DAY".equals(reminderType) && sub.daysUntilExpiry != 1) {
+                    continue;
+                }
+
                 // Check if reminder already sent (dedup)
                 if (PurchaseDAO.hasReminderBeenSent(sub.subscriptionId, reminderType)) {
                     System.out.println("     ⏭ Reminder already sent, skipping...");
@@ -159,10 +168,10 @@ public class SubscriptionScheduler {
     private boolean sendReminder(ExpiringSubscription sub, String reminderType) {
         try (Connection conn = DBConnector.getConnection()) {
             // 1. Create in-app notification
-            String title = "⚠️ Subscription Expiring Soon";
+            String title = "Subscription Expiring Soon";
             String body = String.format(
                     "Your subscription to %s will expire in %d day(s) on %s. " +
-                            "Renew now to continue enjoying unlimited access!",
+                            "Renew now for the same city and the same duration to receive a 10%% discount!",
                     sub.cityName,
                     sub.daysUntilExpiry,
                     sub.expiryDate);
@@ -199,7 +208,8 @@ public class SubscriptionScheduler {
         System.out.println("        Subject: Your GCM subscription is expiring soon!");
         System.out.println("        Body: Dear " + sub.username + ", your subscription to");
         System.out.println("              " + sub.cityName + " will expire on " + sub.expiryDate + ".");
-        System.out.println("              Renew now at gcm.com to continue access.");
+        System.out.println(
+                "              Renew now for the same city and the same duration at gcm.com to receive a 10% discount!");
         System.out.println("     ───────────────────────────────────────────────");
     }
 
@@ -215,7 +225,9 @@ public class SubscriptionScheduler {
         System.out.println("     📱 SMS ────────────────────────────────────────");
         System.out.println("        To: " + sub.phone);
         System.out.println("        Message: GCM: Your " + sub.cityName + " subscription");
-        System.out.println("                 expires on " + sub.expiryDate + ". Renew today!");
+        System.out.println(
+                "                 expires on " + sub.expiryDate
+                        + ". Renew now for the same city and the same duration to get 10% off!");
         System.out.println("     ───────────────────────────────────────────────");
     }
 

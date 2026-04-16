@@ -55,6 +55,25 @@
             <version>${javafx.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- Gluon Maps: native JavaFX OSM tile rendering (replaces WebView+Leaflet) -->
+        <dependency>
+            <groupId>com.gluonhq</groupId>
+            <artifactId>maps</artifactId>
+            <version>2.0.0-ea+6</version>
+        </dependency>
+
         <!-- JavaFX Graphics for different platforms -->
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -83,6 +102,9 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>client.LoginApp</mainClass>
+                    <options>
+                        <option>-Xmx1024m</option>
+                    </options>
                 </configuration>
             </plugin>
 

@@ -30,17 +30,14 @@ public class PurchaseDAO {
                 String name = rs.getString("name");
                 double price = rs.getDouble("price");
 
-                // Calculate subscription prices (mock calculation based on base price)
-                // 1 Month: 1.2 x Base
-                // 3 Months: 3.2 x Base (discounted)
-                // 6 Months: 6.0 x Base (discounted)
+                // Calculate subscription prices (Dynamic pricing based on one-time price)
+                // 1 Month: 0.80 x Base
+                // 3 Months: 2.10 x Base
+                // 6 Months: 3.60 x Base
                 Map<Integer, Double> subPrices = new HashMap<>();
-                subPrices.put(1, price * 1.2);
-                subPrices.put(2, price * 2.4);
-                subPrices.put(3, price * 3.2);
-                subPrices.put(4, price * 4.4);
-                subPrices.put(5, price * 5.5);
-                subPrices.put(6, price * 6.0);
+                subPrices.put(1, price * 0.80);
+                subPrices.put(3, price * 2.10);
+                subPrices.put(6, price * 3.60);
 
                 return new CityPriceInfo(cityId, name, price, subPrices);
             }
@@ -84,27 +81,54 @@ public class PurchaseDAO {
     }
 
     /**
-     * Check if user has any previous subscription for this city.
+     * Check if user has an active subscription for this city and duration that
+     * expires within 3 days.
      */
-    public static boolean hasPreviousSubscription(int userId, int cityId) {
-        String sql = "SELECT 1 FROM subscriptions WHERE user_id = ? AND city_id = ? LIMIT 1";
+    public static boolean hasActiveExpiringSubscription(int userId, int cityId, int months) {
+        String sql = "SELECT 1 FROM subscriptions " +
+                "WHERE user_id = ? AND city_id = ? AND months = ? " +
+                "AND end_date > CURDATE() AND DATEDIFF(end_date, CURDATE()) <= 3 LIMIT 1";
         try (Connection conn = DBConnector.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, userId);
             stmt.setInt(2, cityId);
+            stmt.setInt(3, months);
             return stmt.executeQuery().next();
         } catch (SQLException e) {
-            System.err.println("Error checking previous subscription: " + e.getMessage());
+            System.err.println("Error checking active expiring subscription: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Check if user has an active subscription for this city and exact duration.
+     * Used to decide whether to show "Renew subscription..." in the catalog.
+     */
+    public static boolean hasActiveSubscriptionForDuration(int userId, int cityId, int months) {
+        String sql = "SELECT 1 FROM subscriptions " +
+                "WHERE user_id = ? AND city_id = ? AND months = ? " +
+                "AND end_date > CURDATE() LIMIT 1";
+        try (Connection conn = DBConnector.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, cityId);
+            stmt.setInt(3, months);
+            return stmt.executeQuery().next();
+        } catch (SQLException e) {
+            System.err.println("Error checking active subscription duration: " + e.getMessage());
             return false;
         }
     }
 
     /**
      * Record a subscription purchase.
+     * If user already has an active subscription for this city, extend its end_date
+     * by the new months instead of creating a new row.
      */
     public static boolean purchaseSubscription(int userId, int cityId, int months) {
-        if (months < 1 || months > 6)
+        if (months != 1 && months != 3 && months != 6) {
             return false;
+        }
 
         CityPriceInfo priceInfo = getCityPrice(cityId);
         if (priceInfo == null)
@@ -114,21 +138,47 @@ public class PurchaseDAO {
         if (price == null)
             return false; // Should not happen given logic above
 
-        String query = "INSERT INTO subscriptions (user_id, city_id, months, price_paid, end_date) " +
-                "VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MONTH))";
+        try (Connection conn = DBConnector.getConnection()) {
+            // If user has an active subscription for this city, extend it
+            String findActive = "SELECT id, end_date FROM subscriptions " +
+                    "WHERE user_id = ? AND city_id = ? AND end_date > CURDATE() ORDER BY end_date DESC LIMIT 1";
+            try (PreparedStatement findStmt = conn.prepareStatement(findActive)) {
+                findStmt.setInt(1, userId);
+                findStmt.setInt(2, cityId);
+                ResultSet rs = findStmt.executeQuery();
+                if (rs.next()) {
+                    int subId = rs.getInt("id");
+                    // Apply 10% discount when renewing same city+duration (active subscription for that duration)
+                    if (hasActiveSubscriptionForDuration(userId, cityId, months)) {
+                        price = price * 0.90;
+                    }
+                    String extend = "UPDATE subscriptions SET end_date = DATE_ADD(end_date, INTERVAL ? MONTH), " +
+                            "price_paid = price_paid + ?, months = ?, is_active = TRUE WHERE id = ?";
+                    try (PreparedStatement updateStmt = conn.prepareStatement(extend)) {
+                        updateStmt.setInt(1, months);
+                        updateStmt.setDouble(2, price);
+                        updateStmt.setInt(3, months);
+                        updateStmt.setInt(4, subId);
+                        int affected = updateStmt.executeUpdate();
+                        return affected > 0;
+                    }
+                }
+            }
 
-        try (Connection conn = DBConnector.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setInt(1, userId);
-            stmt.setInt(2, cityId);
-            stmt.setInt(3, months);
-            stmt.setDouble(4, price);
-            stmt.setInt(5, months);
-
-            int affected = stmt.executeUpdate();
-            return affected > 0;
-
+            // No active subscription: insert new row
+            if (hasActiveSubscriptionForDuration(userId, cityId, months)) {
+                price = price * 0.90;
+            }
+            String query = "INSERT INTO subscriptions (user_id, city_id, months, price_paid, start_date, end_date, is_active) " +
+                    "VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? MONTH), TRUE)";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setInt(1, userId);
+                stmt.setInt(2, cityId);
+                stmt.setInt(3, months);
+                stmt.setDouble(4, price);
+                stmt.setInt(5, months);
+                return stmt.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
             System.err.println("Error recording subscription: " + e.getMessage());
             return false;
@@ -140,9 +190,10 @@ public class PurchaseDAO {
      * Checks both active subscriptions and past one-time purchases.
      */
     public static EntitlementInfo getEntitlement(int userId, int cityId) {
-        // 1. Check active subscription
+        // 1. Check active subscription (even if cancelled auto-renew, user keeps access
+        // until end_date)
         String subQuery = "SELECT end_date FROM subscriptions " +
-                "WHERE user_id = ? AND city_id = ? AND is_active = TRUE " +
+                "WHERE user_id = ? AND city_id = ? " +
                 "AND end_date > NOW() ORDER BY end_date DESC LIMIT 1";
 
         try (Connection conn = DBConnector.getConnection();
@@ -173,19 +224,55 @@ public class PurchaseDAO {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                // One-time purchase allows view (no expiry) and download
-                // Note: Requirement says "One-time: downloads approved version at purchase
-                // time."
-                // But typically users expect to be able to download it again.
-                // For this implementation, we allow download if purchased.
+                // One-time: allow one download per purchase for this city
+                int purchaseCount = getOneTimePurchaseCount(userId, cityId);
+                int downloadCount = getDownloadCount(userId, cityId);
+                boolean canDownload = downloadCount < purchaseCount;
                 return new EntitlementInfo(cityId, EntitlementInfo.EntitlementType.ONE_TIME,
-                        null, false, true); // Can download, but CANNOT view (viewing is sub only)
+                        null, false, canDownload);
             }
         } catch (SQLException e) {
             System.err.println("Error checking purchase: " + e.getMessage());
         }
 
         return new EntitlementInfo(cityId, EntitlementInfo.EntitlementType.NONE, null, false, false);
+    }
+
+    /**
+     * Returns how many one-time purchases the user has for this city.
+     * Each one-time purchase entitles the user to one download.
+     */
+    public static int getOneTimePurchaseCount(int userId, int cityId) {
+        String query = "SELECT COUNT(*) FROM purchases WHERE user_id = ? AND city_id = ?";
+        try (Connection conn = DBConnector.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, cityId);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            System.err.println("Error getting one-time purchase count: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Returns how many times the user has recorded a download for this city
+     * (used for one-time entitlement: we only record when downloading via
+     * one-time).
+     */
+    public static int getDownloadCount(int userId, int cityId) {
+        String query = "SELECT COUNT(*) FROM download_events WHERE user_id = ? AND city_id = ?";
+        try (Connection conn = DBConnector.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, cityId);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            System.err.println("Error getting download count: " + e.getMessage());
+            return 0;
+        }
     }
 
     /**
@@ -231,13 +318,16 @@ public class PurchaseDAO {
     public static java.util.List<EntitlementInfo> getUserPurchases(int userId) {
         java.util.List<EntitlementInfo> purchases = new java.util.ArrayList<>();
 
-        // Get subscriptions
+        // Get subscriptions: one row per city with latest end_date (combined expiry)
         String subQuery = """
-                SELECT s.city_id, c.name, s.end_date
+                SELECT s.city_id, c.name, MAX(s.end_date) AS end_date,
+                       SUM(s.price_paid) AS price_paid, MIN(s.start_date) AS start_date
                 FROM subscriptions s
                 JOIN cities c ON s.city_id = c.id
                 WHERE s.user_id = ?
-                ORDER BY s.created_at DESC
+                GROUP BY s.city_id, c.name
+                HAVING MAX(s.end_date) > CURDATE()
+                ORDER BY end_date DESC
                 """;
 
         try (Connection conn = DBConnector.getConnection();
@@ -251,45 +341,76 @@ public class PurchaseDAO {
                         : null;
                 boolean isActive = expiryDate != null && !expiryDate.isBefore(LocalDate.now());
 
-                purchases.add(new EntitlementInfo(
+                EntitlementInfo info = new EntitlementInfo(
                         rs.getInt("city_id"),
                         rs.getString("name"),
                         EntitlementInfo.EntitlementType.SUBSCRIPTION,
                         expiryDate,
                         isActive,
-                        isActive));
+                        isActive);
+                info.setCanceled(false);
+                info.setPricePaid(rs.getDouble("price_paid"));
+                info.setPurchaseDate(
+                        rs.getTimestamp("start_date") != null
+                                ? rs.getTimestamp("start_date").toLocalDateTime().toLocalDate()
+                                : null);
+                purchases.add(info);
             }
         } catch (SQLException e) {
             System.err.println("PurchaseDAO.getUserPurchases (subscriptions): " + e.getMessage());
         }
 
-        // Get one-time purchases
+        // Get one-time purchases ordered by city then oldest first, so we can assign
+        // canDownload per row: only the first (purchaseCount - downloadCount) rows per city get true
         String purchaseQuery = """
-                SELECT p.city_id, c.name, p.purchased_at
+                SELECT p.city_id, c.name, p.purchased_at, p.price_paid
                 FROM purchases p
                 JOIN cities c ON p.city_id = c.id
                 WHERE p.user_id = ?
-                ORDER BY p.purchased_at DESC
+                ORDER BY p.city_id, p.purchased_at ASC
                 """;
 
+        java.util.List<EntitlementInfo> oneTimeList = new java.util.ArrayList<>();
         try (Connection conn = DBConnector.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(purchaseQuery)) {
             stmt.setInt(1, userId);
             ResultSet rs = stmt.executeQuery();
 
+            int lastCityId = -1;
+            int downloadCountForCity = 0;
+            int slotIndexForCity = 0;
+
             while (rs.next()) {
-                purchases.add(new EntitlementInfo(
-                        rs.getInt("city_id"),
+                int cid = rs.getInt("city_id");
+                if (cid != lastCityId) {
+                    lastCityId = cid;
+                    downloadCountForCity = getDownloadCount(userId, cid);
+                    slotIndexForCity = 0;
+                }
+                // This row's download is still available iff we haven't "used" this slot yet
+                boolean canDownload = slotIndexForCity >= downloadCountForCity;
+                slotIndexForCity++;
+
+                EntitlementInfo info = new EntitlementInfo(
+                        cid,
                         rs.getString("name"),
                         EntitlementInfo.EntitlementType.ONE_TIME,
                         null, // No expiry for one-time
                         true, // Can view
-                        true // Can download
-                ));
+                        canDownload);
+                info.setPricePaid(rs.getDouble("price_paid"));
+                info.setPurchaseDate(
+                        rs.getTimestamp("purchased_at") != null
+                                ? rs.getTimestamp("purchased_at").toLocalDateTime().toLocalDate()
+                                : null);
+                oneTimeList.add(info);
             }
         } catch (SQLException e) {
             System.err.println("PurchaseDAO.getUserPurchases (purchases): " + e.getMessage());
         }
+        // Show not-yet-downloaded (canDownload=true) first in the one-time table
+        oneTimeList.sort((a, b) -> Boolean.compare(b.isCanDownload(), a.isCanDownload()));
+        purchases.addAll(oneTimeList);
 
         return purchases;
     }
@@ -299,21 +420,21 @@ public class PurchaseDAO {
     /**
      * Get detailed purchases for a user (for profile view).
      *
-     * @param userId User ID
+     * @param userId        User ID
+     * @param lastMonthOnly Filter purchases to last 1 month
      * @return List of CustomerPurchaseDTO
      */
-    public static java.util.List<common.dto.CustomerPurchaseDTO> getPurchasesDetailed(int userId) {
+    public static java.util.List<common.dto.CustomerPurchaseDTO> getPurchasesDetailed(int userId,
+            boolean lastMonthOnly) {
         java.util.List<common.dto.CustomerPurchaseDTO> purchases = new java.util.ArrayList<>();
 
-        // Get subscriptions
-        String subQuery = """
-                SELECT s.id, s.city_id, c.name, s.price_paid, s.created_at,
-                       s.months, s.start_date, s.end_date, s.is_active
-                FROM subscriptions s
-                JOIN cities c ON s.city_id = c.id
-                WHERE s.user_id = ?
-                ORDER BY s.created_at DESC
-                """;
+        String dateFilterSubs = lastMonthOnly ? " AND s.start_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)" : "";
+
+        String subQuery = "SELECT s.id, s.city_id, c.name, s.price_paid, s.start_date, " +
+                "s.months, s.end_date, s.is_active " +
+                "FROM subscriptions s JOIN cities c ON s.city_id = c.id " +
+                "WHERE s.user_id = ?" + dateFilterSubs +
+                " ORDER BY s.start_date DESC";
 
         try (Connection conn = DBConnector.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(subQuery)) {
@@ -335,7 +456,7 @@ public class PurchaseDAO {
                         rs.getInt("city_id"),
                         rs.getString("name"),
                         rs.getDouble("price_paid"),
-                        rs.getTimestamp("created_at"),
+                        rs.getTimestamp("start_date"),
                         rs.getInt("months"),
                         startDate,
                         expiryDate,
@@ -345,14 +466,12 @@ public class PurchaseDAO {
             System.err.println("PurchaseDAO.getPurchasesDetailed (subscriptions): " + e.getMessage());
         }
 
-        // Get one-time purchases
-        String purchaseQuery = """
-                SELECT p.id, p.city_id, c.name, p.price_paid, p.purchased_at
-                FROM purchases p
-                JOIN cities c ON p.city_id = c.id
-                WHERE p.user_id = ?
-                ORDER BY p.purchased_at DESC
-                """;
+        String dateFilterPurchases = lastMonthOnly ? " AND p.purchased_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)" : "";
+
+        String purchaseQuery = "SELECT p.id, p.city_id, c.name, p.price_paid, p.purchased_at " +
+                "FROM purchases p JOIN cities c ON p.city_id = c.id " +
+                "WHERE p.user_id = ?" + dateFilterPurchases +
+                " ORDER BY p.purchased_at DESC";
 
         try (Connection conn = DBConnector.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(purchaseQuery)) {
@@ -398,8 +517,9 @@ public class PurchaseDAO {
             System.err.println("Error getting purchase customers: " + e.getMessage());
         }
 
-        // Get users with active subscriptions
-        String subQuery = "SELECT DISTINCT user_id FROM subscriptions WHERE city_id = ? AND is_active = TRUE AND end_date > NOW()";
+        // Get users with active subscriptions (including cancelled ones that haven't
+        // expired)
+        String subQuery = "SELECT DISTINCT user_id FROM subscriptions WHERE city_id = ? AND end_date > NOW()";
         try (Connection conn = DBConnector.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(subQuery)) {
             stmt.setInt(1, cityId);
@@ -462,8 +582,7 @@ public class PurchaseDAO {
                 FROM subscriptions s
                 JOIN users u ON s.user_id = u.id
                 JOIN cities c ON s.city_id = c.id
-                WHERE s.is_active = TRUE
-                AND s.end_date > CURDATE()
+                WHERE s.end_date > CURDATE()
                 AND DATEDIFF(s.end_date, CURDATE()) <= ?
                 ORDER BY s.end_date ASC
                 """;

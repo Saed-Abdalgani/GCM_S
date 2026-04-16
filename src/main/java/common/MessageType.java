@@ -29,7 +29,21 @@ public enum MessageType {
     /** Get full map content for editing */
     GET_MAP_CONTENT,
 
-    /** Submit map changes (create/update) */
+    /**
+     * Save map changes as draft only (never publish); does not depend on payload
+     * draft field.
+     */
+    SAVE_MAP_CHANGES,
+
+    /**
+     * Get current user's draft (e.g. delete-city-only draft with no map context).
+     */
+    GET_MY_DRAFT,
+
+    /**
+     * Submit map changes (Send to manager / Publish); payload draft distinguishes
+     * create-requests vs publish.
+     */
     SUBMIT_MAP_CHANGES,
 
     // --- City Operations ---
@@ -109,6 +123,9 @@ public enum MessageType {
 
     /** Check user entitlement for a city */
     GET_ENTITLEMENT,
+
+    /** Check if user is eligible for a 10% renewal discount */
+    CHECK_DISCOUNT_ELIGIBILITY,
 
     /** Check if user can download map */
     CAN_DOWNLOAD,
@@ -212,11 +229,20 @@ public enum MessageType {
     /** Agent: close/resolve ticket */
     AGENT_CLOSE_TICKET,
 
+    /** Customer: reply to a ticket */
+    CUSTOMER_REPLY,
+
     // ==================== REPORTS (Phase 10) ====================
     /** Get activity report stats */
     GET_ACTIVITY_REPORT,
 
     // ==================== MAP EDIT APPROVALS ====================
+    /**
+     * Get all POIs for a city (for tours from different maps, add existing POI to
+     * map)
+     */
+    GET_POIS_FOR_CITY,
+
     /** List all pending map edit requests */
     GET_PENDING_MAP_EDITS,
 
@@ -224,5 +250,18 @@ public enum MessageType {
     APPROVE_MAP_EDIT,
 
     /** Reject a map edit request */
-    REJECT_MAP_EDIT
+    REJECT_MAP_EDIT,
+
+    // ==================== USER MANAGEMENT (Company Manager) ====================
+    /** List all staff users (non-customer roles) */
+    ADMIN_LIST_STAFF,
+
+    /** Update a user's role */
+    ADMIN_UPDATE_USER_ROLE,
+
+    /** Revert a staff user back to CUSTOMER role */
+    ADMIN_REVOKE_ROLE,
+
+    /** Create a new staff user with a specified role */
+    ADMIN_CREATE_STAFF_USER
 }

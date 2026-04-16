@@ -76,6 +76,10 @@ public class CustomerHandler {
             return Response.error(request, Response.ERR_NOT_FOUND, "Profile not found");
         }
 
+        if (isManager(session.role)) {
+            maskCardDetails(profile);
+        }
+
         System.out.println("✓ Profile retrieved for: " + session.username);
         return Response.success(request, profile);
     }
@@ -103,6 +107,7 @@ public class CustomerHandler {
         String email = updates.get("email");
         String phone = updates.get("phone");
         String cardNumber = updates.get("card");
+        String cardExpiry = updates.get("cardExpiry");
 
         // Validate email if provided
         if (email != null && !email.isEmpty()) {
@@ -116,7 +121,7 @@ public class CustomerHandler {
             }
         }
 
-        boolean success = UserDAO.updateProfile(session.userId, email, phone, cardNumber);
+        boolean success = UserDAO.updateProfile(session.userId, email, phone, cardNumber, cardExpiry);
         if (success) {
             System.out.println("✓ Profile updated for: " + session.username);
             // Return updated profile
@@ -148,7 +153,12 @@ public class CustomerHandler {
                     "Manager access required");
         }
 
-        List<CustomerListItemDTO> customers = UserDAO.listAllCustomers();
+        boolean lastMonthOnly = false;
+        if (request.getPayload() != null && request.getPayload() instanceof Boolean) {
+            lastMonthOnly = (Boolean) request.getPayload();
+        }
+
+        List<CustomerListItemDTO> customers = UserDAO.listAllCustomers(lastMonthOnly);
         System.out.println("✓ Listed " + customers.size() + " customers");
         return Response.success(request, customers);
     }
@@ -156,8 +166,9 @@ public class CustomerHandler {
     /**
      * ADMIN_GET_CUSTOMER_PURCHASES - Get a specific customer's purchases.
      * Only CONTENT_MANAGER or COMPANY_MANAGER can access.
-     * Expected payload: userId (Integer)
+     * Expected payload: userId (Integer) or Map with "userId" and "lastMonthOnly"
      */
+    @SuppressWarnings("unchecked")
     private static Response handleAdminGetCustomerPurchases(Request request) {
         System.out.println("═══ ADMIN_GET_CUSTOMER_PURCHASES ═══");
 
@@ -173,15 +184,26 @@ public class CustomerHandler {
                     "Manager access required");
         }
 
-        // Parse target user ID
-        int targetUserId;
+        // Parse target user ID and lastMonthOnly
+        int targetUserId = -1;
+        boolean lastMonthOnly = false;
+
+        Object payload = request.getPayload();
         try {
-            targetUserId = Integer.parseInt(request.getPayload().toString());
+            if (payload instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) payload;
+                targetUserId = Integer.parseInt(map.get("userId").toString());
+                if (map.containsKey("lastMonthOnly")) {
+                    lastMonthOnly = (Boolean) map.get("lastMonthOnly");
+                }
+            } else {
+                targetUserId = Integer.parseInt(payload.toString());
+            }
         } catch (Exception e) {
             return Response.error(request, Response.ERR_VALIDATION, "Invalid user ID");
         }
 
-        List<CustomerPurchaseDTO> purchases = PurchaseDAO.getPurchasesDetailed(targetUserId);
+        List<CustomerPurchaseDTO> purchases = PurchaseDAO.getPurchasesDetailed(targetUserId, lastMonthOnly);
         System.out.println("✓ Retrieved " + purchases.size() + " purchases for user " + targetUserId);
         return Response.success(request, purchases);
     }
@@ -204,5 +226,17 @@ public class CustomerHandler {
      */
     private static boolean isManager(String role) {
         return ROLE_MANAGER.equals(role) || ROLE_COMPANY_MANAGER.equals(role);
+    }
+
+    /**
+     * Masks card details for manager view.
+     */
+    private static void maskCardDetails(CustomerProfileDTO profile) {
+        if (profile.getCardLast4() != null) {
+            profile.setCardLast4("****");
+        }
+        if (profile.getCardExpiry() != null) {
+            profile.setCardExpiry("**/**");
+        }
     }
 }

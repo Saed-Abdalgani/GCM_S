@@ -1,56 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.chart.BarChart?>
-<?import javafx.scene.chart.CategoryAxis?>
-<?import javafx.scene.chart.NumberAxis?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.web.WebView?>
 
-<AnchorPane prefHeight="700.0" prefWidth="900.0" style="-fx-background-color: #f4f4f4;" xmlns="http://javafx.com/javafx/19" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.boundary.ReportsController">
-   <children>
-      <VBox spacing="20.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-         <padding>
-            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-         </padding>
-         <children>
-            <!-- Header -->
-            <HBox alignment="CENTER_LEFT" spacing="15.0">
-               <children>
-                  <Button mnemonicParsing="false" onAction="#handleBack" style="-fx-background-color: #e0e0e0;" text="← Back" />
-                  <Label style="-fx-font-size: 24px; -fx-font-weight: bold;" text="Activity Reports" />
-               </children>
+<BorderPane style="-fx-background-color: #f5f6fa;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.boundary.ReportsController" stylesheets="@sidebar.css">
+
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: white; -fx-padding: 14 20; -fx-border-color: #e7e7e7; -fx-border-width: 0 0 1 0;">
+            <Button onAction="#handleBack" onMouseEntered="#handleBackHoverEnter" onMouseExited="#handleBackHoverExit" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #7f8c8d; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 10; -fx-padding: 6 10;" text="← Back" />
+            <Button onAction="#toggleGuestDashboard" style="-fx-background-color: #d5ed9f; -fx-text-fill: #00712d; -fx-font-family: 'Segoe UI', 'Trebuchet MS', sans-serif; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 6 14; -fx-cursor: hand;" text="Menu" />
+            <Region HBox.hgrow="ALWAYS" />
+            <HBox alignment="CENTER_RIGHT" spacing="5">
+                <WebView fx:id="navbarLogoView1" maxHeight="30" maxWidth="30" minHeight="30" minWidth="30" prefHeight="30" prefWidth="30" />
+                <Button onAction="#navigateToHome" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: black; -fx-font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; -fx-font-size: 24px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 0 2 0 2;" text="Global City Map" />
             </HBox>
+        </HBox>
+    </top>
 
-            <!-- Filters Section -->
+   <center>
+      <HBox spacing="0">
+            <VBox fx:id="guestDashboardPane" managed="false" maxWidth="260" prefWidth="260" spacing="0" style="-fx-background-color: white; -fx-border-color: #e3e3e3; -fx-border-width: 0 1 0 0;" visible="false">
+                <VBox spacing="0" style="-fx-padding: 0;">
+                    <Button styleClass="sidebar-nav-btn" text="Browse Catalog" onAction="#openSearchScreenFromAction" maxWidth="1.7976931348623157E308"/>
+                    <Button fx:id="mapEditorNavBtn" styleClass="sidebar-nav-btn" text="Map Editor" onAction="#openMapEditorFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="myPurchasesNavBtn" styleClass="sidebar-nav-btn" text="My Purchases" onAction="#openMyPurchasesFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="profileNavBtn" styleClass="sidebar-nav-btn" text="My Profile" onAction="#openProfileFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="customersNavBtn" styleClass="sidebar-nav-btn" text="Customers" onAction="#openAdminCustomersFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="pricingNavBtn" styleClass="sidebar-nav-btn" text="Pricing" onAction="#openPricingFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="pricingApprovalNavBtn" styleClass="sidebar-nav-btn" text="Approve Prices" onAction="#openPricingApprovalFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="supportNavBtn" styleClass="sidebar-nav-btn" text="Support" onAction="#openSupportFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="agentConsoleNavBtn" styleClass="sidebar-nav-btn" text="Agent Console" onAction="#openAgentConsoleFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="editApprovalsNavBtn" styleClass="sidebar-nav-btn" text="Edit Approvals" onAction="#openEditApprovalsFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="reportsNavBtn" styleClass="sidebar-nav-btn" text="City Reports" onAction="#openReportsFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                    <Button fx:id="userManagementNavBtn" styleClass="sidebar-nav-btn" text="User Management" onAction="#openUserManagementFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                </VBox>
+            </VBox>
+      <VBox spacing="20.0" style="-fx-padding: 25;" HBox.hgrow="ALWAYS">
+
             <HBox alignment="CENTER_LEFT" spacing="15.0" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 1);">
                <padding>
                   <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
                </padding>
                <children>
                   <VBox spacing="5.0">
-                     <children>
-                        <Label text="From Date" textFill="#666666" />
-                        <DatePicker fx:id="startDatePicker" prefWidth="150.0" />
-                     </children>
+                     <Label text="From Date" textFill="#666666" />
+                     <DatePicker fx:id="startDatePicker" prefWidth="150.0" />
                   </VBox>
                   <VBox spacing="5.0">
-                     <children>
-                        <Label text="To Date" textFill="#666666" />
-                        <DatePicker fx:id="endDatePicker" prefWidth="150.0" />
-                     </children>
+                     <Label text="To Date" textFill="#666666" />
+                     <DatePicker fx:id="endDatePicker" prefWidth="150.0" />
                   </VBox>
                   <VBox spacing="5.0">
-                     <children>
-                        <Label text="City (Optional)" textFill="#666666" />
-                        <ComboBox fx:id="cityComboBox" prefWidth="200.0" promptText="Select a city..." />
-                     </children>
+                     <Label text="City (Optional)" textFill="#666666" />
+                     <ComboBox fx:id="cityComboBox" prefWidth="200.0" promptText="All Cities" />
                   </VBox>
                   <Button mnemonicParsing="false" onAction="#handleGenerateReport" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;" text="Generate Report">
                      <HBox.margin>
@@ -60,29 +70,27 @@
                </children>
             </HBox>
 
-            <!-- Chart Section -->
-            <VBox VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 1);">
-               <children>
-                  <BarChart fx:id="activityChart" legendVisible="false" title="Activity Statistics" VBox.vgrow="ALWAYS">
-                    <xAxis>
-                      <CategoryAxis label="Metric" side="BOTTOM" />
-                    </xAxis>
-                    <yAxis>
-                      <NumberAxis label="Count" side="LEFT" />
-                    </yAxis>
-                  </BarChart>
-               </children>
+            <VBox fx:id="chartContainer" minHeight="380.0" prefHeight="400.0" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 1);">
                <padding>
                   <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
                </padding>
             </VBox>
-            
-            <!-- Summary Stats (Optional) -->
-            <HBox spacing="10.0">
-                <Label fx:id="statusLabel" text="Ready." textFill="#666666"/>
-            </HBox>
 
-         </children>
+            <VBox spacing="8.0">
+               <Label text="Report values (numbers for this period):" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+               <Label fx:id="valuesLabel" text="Maps: —  One-time: —  Subscriptions: —  Renewals: —  Views: —  Downloads: —" wrapText="true" style="-fx-font-size: 13px; -fx-padding: 4 0 0 0;"/>
+               <Label fx:id="statusLabel" text="Select dates and click Generate Report." textFill="#666666" style="-fx-font-size: 11px;"/>
+            </VBox>
+
       </VBox>
-   </children>
-</AnchorPane>
+      </HBox>
+   </center>
+
+   <bottom>
+      <HBox alignment="CENTER" spacing="20" style="-fx-background-color: #ecf0f1; -fx-padding: 10;">
+         <Label style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;" text="City Reports" />
+         <Label style="-fx-text-fill: #7f8c8d;" text="*" />
+         <Label style="-fx-text-fill: #27ae60; -fx-font-size: 11px;" text="Manager View" />
+      </HBox>
+   </bottom>
+</BorderPane>

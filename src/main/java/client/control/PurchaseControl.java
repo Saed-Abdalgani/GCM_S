@@ -1,6 +1,7 @@
 package client.control;
 
 import client.GCMClient;
+import client.LoginController;
 import common.MessageType;
 import common.Request;
 import common.dto.CityPriceInfo;
@@ -72,30 +73,33 @@ public class PurchaseControl {
     }
 
     /**
-     * Send purchase request.
+     * Send purchase request (includes session token for authentication).
      */
-    public void purchaseOneTime(int cityId) {
-        Request request = new Request(MessageType.PURCHASE_ONE_TIME, new PurchaseRequest(cityId));
+    public void purchaseOneTime(int cityId, boolean saveCard, String cardLast4, String cardExpiry) {
+        Request request = new Request(MessageType.PURCHASE_ONE_TIME,
+                new PurchaseRequest(cityId, saveCard, cardLast4, cardExpiry), LoginController.currentSessionToken);
         send(request);
     }
 
-    public void purchaseSubscription(int cityId, int months) {
-        Request request = new Request(MessageType.PURCHASE_SUBSCRIPTION, new PurchaseRequest(cityId, months));
+    public void purchaseSubscription(int cityId, int months, boolean saveCard, String cardLast4, String cardExpiry) {
+        Request request = new Request(MessageType.PURCHASE_SUBSCRIPTION,
+                new PurchaseRequest(cityId, months, saveCard, cardLast4, cardExpiry),
+                LoginController.currentSessionToken);
         send(request);
     }
 
     public void getEntitlement(int cityId) {
-        Request request = new Request(MessageType.GET_ENTITLEMENT, cityId);
+        Request request = new Request(MessageType.GET_ENTITLEMENT, cityId, LoginController.currentSessionToken);
         send(request);
     }
 
     public void checkCanDownload(int cityId) {
-        Request request = new Request(MessageType.CAN_DOWNLOAD, cityId);
+        Request request = new Request(MessageType.CAN_DOWNLOAD, cityId, LoginController.currentSessionToken);
         send(request);
     }
 
     public void downloadMapVersion(int cityId) {
-        Request request = new Request(MessageType.DOWNLOAD_MAP_VERSION, cityId);
+        Request request = new Request(MessageType.DOWNLOAD_MAP_VERSION, cityId, LoginController.currentSessionToken);
         send(request);
     }
 

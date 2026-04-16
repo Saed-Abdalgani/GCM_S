@@ -1,7 +1,16 @@
 package client.boundary;
 
+import java.io.IOException;
+import java.text.NumberFormat;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
 import client.GCMClient;
 import client.LoginController;
+import client.MenuNavigationHelper;
 import common.MessageType;
 import common.Request;
 import common.Response;
@@ -14,24 +23,32 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.stage.Stage;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.paint.Color;
 
-import java.io.IOException;
-import java.text.NumberFormat;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import javafx.scene.layout.VBox;
+import javafx.scene.web.WebView;
+import javafx.stage.Stage;
 
 /**
  * Controller for the Profile screen.
  * Allows customers to view/edit their profile and see purchase history.
  */
 public class ProfileScreen implements GCMClient.MessageHandler {
+    private static final String BACK_BTN_BASE_STYLE =
+            "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #7f8c8d; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 6 10; -fx-background-radius: 10;";
+    private static final String BACK_BTN_HOVER_STYLE =
+            "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #111111; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 6 10; -fx-background-radius: 10;";
 
     // FXML Elements - Profile
     @FXML
@@ -47,11 +64,30 @@ public class ProfileScreen implements GCMClient.MessageHandler {
     @FXML
     private TextField phoneField;
     @FXML
-    private TextField cardField;
+    private Label cardLabel;
+    @FXML
+    private Button removeCardBtn;
     @FXML
     private Label lastLoginLabel;
     @FXML
     private Label userInfoLabel;
+    @FXML
+    private WebView navbarLogoView1;
+    @FXML
+    private WebView profileAvatarView;
+    @FXML
+    private VBox guestDashboardPane;
+    @FXML private Button mapEditorNavBtn;
+    @FXML private Button myPurchasesNavBtn;
+    @FXML private Button profileNavBtn;
+    @FXML private Button customersNavBtn;
+    @FXML private Button pricingNavBtn;
+    @FXML private Button pricingApprovalNavBtn;
+    @FXML private Button supportNavBtn;
+    @FXML private Button agentConsoleNavBtn;
+    @FXML private Button editApprovalsNavBtn;
+    @FXML private Button reportsNavBtn;
+    @FXML private Button userManagementNavBtn;
     @FXML
     private Label statusLabel;
     @FXML
@@ -74,8 +110,6 @@ public class ProfileScreen implements GCMClient.MessageHandler {
     private TableColumn<PurchaseRow, String> statusCol;
     @FXML
     private TableColumn<PurchaseRow, String> expiryCol;
-    @FXML
-    private TableColumn<PurchaseRow, String> actionCol;
 
     private GCMClient gcmClient;
     private ObservableList<PurchaseRow> purchaseRows = FXCollections.observableArrayList();
@@ -84,13 +118,80 @@ public class ProfileScreen implements GCMClient.MessageHandler {
     private static final NumberFormat CURRENCY_FORMAT = NumberFormat.getCurrencyInstance(Locale.US);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("MMM dd, yyyy");
 
+    private static final String NAVBAR_LOGO_SVG_RESOURCE = "/client/assets/favicon.svg";
+    private static final String PROFILE_AVATAR_SVG_RESOURCE = "/client/assets/profile-avatar.svg";
+
     @FXML
     public void initialize() {
         System.out.println("ProfileScreen: Initializing");
+        applyNavbarLogoSvg();
+        applyProfileAvatarSvg();
+        MenuNavigationHelper.configureSidebarButtons(mapEditorNavBtn, myPurchasesNavBtn, profileNavBtn, customersNavBtn, pricingNavBtn, pricingApprovalNavBtn, supportNavBtn, agentConsoleNavBtn, editApprovalsNavBtn, reportsNavBtn, userManagementNavBtn);
         setupTable();
         connectAndLoad();
     }
 
+    private void applyNavbarLogoSvg() {
+        if (navbarLogoView1 == null) return;
+        java.net.URL svgUrl = getClass().getResource(NAVBAR_LOGO_SVG_RESOURCE);
+        if (svgUrl == null) {
+            navbarLogoView1.setVisible(false);
+            navbarLogoView1.setManaged(false);
+            return;
+        }
+        try {
+            navbarLogoView1.getEngine().load(svgUrl.toExternalForm());
+        } catch (Exception e) {
+            navbarLogoView1.setVisible(false);
+            navbarLogoView1.setManaged(false);
+        }
+    }
+
+    private void applyProfileAvatarSvg() {
+        if (profileAvatarView == null) return;
+        try (java.io.InputStream in = getClass().getResourceAsStream(PROFILE_AVATAR_SVG_RESOURCE)) {
+            if (in == null) {
+                profileAvatarView.setVisible(false);
+                profileAvatarView.setManaged(false);
+                return;
+            }
+            byte[] svgBytes = in.readAllBytes();
+            String base64 = java.util.Base64.getEncoder().encodeToString(svgBytes);
+            String dataUri = "data:image/svg+xml;base64," + base64;
+            String html = "<!DOCTYPE html><html><head><style>"
+                    + "html,body{margin:0;padding:0;overflow:hidden;background:transparent;} "
+                    + "img{width:64px;height:64px;display:block;}"
+                    + "</style></head><body><img src=\"" + dataUri + "\"/></body></html>";
+            profileAvatarView.setPageFill(Color.TRANSPARENT);
+            profileAvatarView.setStyle("-fx-background-color: transparent; -fx-background-insets: 0;");
+            profileAvatarView.getEngine().loadContent(html);
+        } catch (Exception e) {
+            profileAvatarView.setVisible(false);
+            profileAvatarView.setManaged(false);
+        }
+    }
+
+    @FXML
+    private void toggleGuestDashboard(ActionEvent event) {
+        if (guestDashboardPane == null) return;
+        boolean nextVisible = !guestDashboardPane.isVisible();
+        guestDashboardPane.setVisible(nextVisible);
+        guestDashboardPane.setManaged(nextVisible);
+    }
+
+    @FXML private void navigateToHome(ActionEvent e) { MenuNavigationHelper.navigateToDashboard((Node) e.getSource()); }
+    @FXML private void openSearchScreenFromAction(ActionEvent e) { MenuNavigationHelper.navigateToCatalog(guestDashboardPane); }
+    @FXML private void openMapEditorFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToMapEditor(guestDashboardPane); }
+    @FXML private void openMyPurchasesFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToMyPurchases(guestDashboardPane); }
+    @FXML private void openProfileFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToProfile(guestDashboardPane); }
+    @FXML private void openAdminCustomersFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToAdminCustomers(guestDashboardPane); }
+    @FXML private void openPricingFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToPricing(guestDashboardPane); }
+    @FXML private void openPricingApprovalFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToPricingApproval(guestDashboardPane); }
+    @FXML private void openSupportFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToSupport(guestDashboardPane); }
+    @FXML private void openAgentConsoleFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToAgentConsole(guestDashboardPane); }
+    @FXML private void openEditApprovalsFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToEditApprovals(guestDashboardPane); }
+    @FXML private void openReportsFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToReports(guestDashboardPane); }
+    @FXML private void openUserManagementFromMenu(ActionEvent e) { MenuNavigationHelper.navigateToUserManagement(guestDashboardPane); }
     private void setupTable() {
         cityCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().cityName));
         typeCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().type));
@@ -98,34 +199,18 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         dateCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().date));
         statusCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().status));
         expiryCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().expiry));
-
-        // Action column with Download button
-        actionCol.setCellFactory(col -> new TableCell<>() {
-            private final Button btn = new Button("📥");
-            {
-                btn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 12px;");
-                btn.setOnAction(e -> {
-                    PurchaseRow row = getTableView().getItems().get(getIndex());
-                    handleDownload(row);
-                });
-            }
-
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    setGraphic(btn);
-                }
-            }
-        });
+        centerTextColumn(cityCol);
+        centerTextColumn(typeCol);
+        centerTextColumn(priceCol);
+        centerTextColumn(dateCol);
+        centerTextColumn(expiryCol);
 
         // Style status column
         statusCol.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
+                setAlignment(Pos.CENTER);
                 if (empty || item == null) {
                     setText(null);
                     setStyle("");
@@ -141,6 +226,17 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         });
 
         purchasesTable.setItems(purchaseRows);
+    }
+
+    private void centerTextColumn(TableColumn<PurchaseRow, String> column) {
+        column.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setAlignment(Pos.CENTER);
+                setText(empty ? null : item);
+            }
+        });
     }
 
     private void connectAndLoad() {
@@ -171,6 +267,8 @@ public class ProfileScreen implements GCMClient.MessageHandler {
             return;
         }
 
+        clearUI();
+
         try {
             Request request = new Request(MessageType.GET_MY_PROFILE, null, token);
             gcmClient.sendToServer(request);
@@ -182,25 +280,32 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         }
     }
 
-    /**
-     * Display profile from local login data (for legacy logins without session
-     * token).
-     */
     private void displayLocalProfile() {
+        clearUI();
         usernameLabel.setText(LoginController.currentUsername != null ? LoginController.currentUsername : "User");
         userInfoLabel
                 .setText("@" + (LoginController.currentUsername != null ? LoginController.currentUsername : "user"));
-        memberSinceLabel.setText("Member since: ---");
+        saveBtn.setDisable(true);
+    }
+
+    /**
+     * Clears all fields to prevent FXML placeholder leakage on error
+     */
+    private void clearUI() {
+        usernameLabel.setText("");
+        userInfoLabel.setText("");
+        memberSinceLabel.setText("");
         totalPurchasesLabel.setText("0");
         totalSpentLabel.setText("$0.00");
-        emailField.setPromptText("your@email.com");
-        phoneField.setPromptText("+1 234 567 8900");
-        cardField.setPromptText("Enter card number");
-        cardField.setText("**** **** **** ----");
-        lastLoginLabel.setText("---");
+        emailField.setText("");
+        emailField.setPromptText("");
+        phoneField.setText("");
+        phoneField.setPromptText("");
+        cardLabel.setText("");
+        removeCardBtn.setVisible(false);
+        removeCardBtn.setManaged(false);
+        lastLoginLabel.setText("");
         statusLabel.setText("");
-        // Disable save for legacy login since no token
-        saveBtn.setDisable(true);
     }
 
     private void loadPurchases() {
@@ -224,21 +329,11 @@ public class ProfileScreen implements GCMClient.MessageHandler {
 
         String email = emailField.getText().trim();
         String phone = phoneField.getText().trim();
-        String cardNumber = cardField.getText().trim();
 
         // Validate email
         if (!email.isEmpty() && !email.contains("@")) {
             showError("Please enter a valid email address");
             return;
-        }
-
-        // Validate card if provided
-        if (!cardNumber.isEmpty() && !cardNumber.startsWith("*")) {
-            // Basic validation - just checking it looks somewhat like a number
-            if (cardNumber.replaceAll("[^0-9]", "").length() < 12) {
-                showError("Card number must be at least 12 digits");
-                return;
-            }
         }
 
         try {
@@ -247,10 +342,6 @@ public class ProfileScreen implements GCMClient.MessageHandler {
                 updates.put("email", email);
             if (!phone.isEmpty())
                 updates.put("phone", phone);
-            if (!cardNumber.isEmpty() && !cardNumber.startsWith("*")) {
-                // Only update if it's a new number (not the masked one)
-                updates.put("card", cardNumber);
-            }
 
             String token = LoginController.currentSessionToken;
             Request request = new Request(MessageType.UPDATE_MY_PROFILE, updates, token);
@@ -260,7 +351,28 @@ public class ProfileScreen implements GCMClient.MessageHandler {
             statusLabel.setStyle("-fx-text-fill: #3498db;");
             saveBtn.setDisable(true);
         } catch (IOException e) {
-            showError("Failed to save profile");
+            showError("Failed to refresh profile");
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void handleRemoveCard(ActionEvent event) {
+        if (gcmClient == null)
+            return;
+        try {
+            Map<String, String> updates = new HashMap<>();
+            updates.put("card", ""); // empty indicates removal
+            updates.put("cardExpiry", "");
+
+            String token = LoginController.currentSessionToken;
+            Request request = new Request(MessageType.UPDATE_MY_PROFILE, updates, token);
+            gcmClient.sendToServer(request);
+
+            statusLabel.setText("Removing card...");
+            statusLabel.setStyle("-fx-text-fill: #3498db;");
+        } catch (IOException e) {
+            showError("Failed to remove card");
             e.printStackTrace();
         }
     }
@@ -275,18 +387,17 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         navigateTo("/client/dashboard.fxml", "GCM Dashboard", 1000, 700);
     }
 
-    private void handleDownload(PurchaseRow row) {
-        if (gcmClient == null)
-            return;
+    @FXML
+    private void handleBackHoverEnter(MouseEvent event) {
+        if (event.getSource() instanceof Button button) {
+            button.setStyle(BACK_BTN_HOVER_STYLE);
+        }
+    }
 
-        try {
-            String token = LoginController.currentSessionToken;
-            Request request = new Request(MessageType.DOWNLOAD_MAP_VERSION, row.cityId, token);
-            gcmClient.sendToServer(request);
-            showInfo("Download started for " + row.cityName);
-        } catch (IOException e) {
-            showError("Download failed");
-            e.printStackTrace();
+    @FXML
+    private void handleBackHoverExit(MouseEvent event) {
+        if (event.getSource() instanceof Button button) {
+            button.setStyle(BACK_BTN_BASE_STYLE);
         }
     }
 
@@ -300,7 +411,11 @@ public class ProfileScreen implements GCMClient.MessageHandler {
 
             if (!response.isOk()) {
                 showError(response.getErrorMessage());
-                saveBtn.setDisable(false);
+                if (response.getRequestType() == MessageType.UPDATE_MY_PROFILE) {
+                    saveBtn.setDisable(false);
+                } else if (response.getRequestType() == MessageType.GET_MY_PROFILE) {
+                    saveBtn.setDisable(true);
+                }
                 return;
             }
 
@@ -351,10 +466,21 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         phoneField.setText(profile.getPhone() != null ? profile.getPhone() : "");
 
         if (profile.getCardLast4() != null && !profile.getCardLast4().isEmpty()) {
-            cardField.setText("**** **** **** " + profile.getCardLast4());
+            String expiry = profile.getCardExpiry() != null ? profile.getCardExpiry() : "MM/YY";
+            if (expiry.equals("**/**")) {
+                cardLabel.setText("Credit Card: **** **** **** ****"); // Masked for managers
+                removeCardBtn.setVisible(false);
+                removeCardBtn.setManaged(false);
+            } else {
+                cardLabel.setText(
+                        String.format("Credit Card: **** **** **** %s\nExpiry: %s", profile.getCardLast4(), expiry));
+                removeCardBtn.setVisible(true);
+                removeCardBtn.setManaged(true);
+            }
         } else {
-            cardField.setText("");
-            cardField.setPromptText("Enter card number");
+            cardLabel.setText("No saved credit card");
+            removeCardBtn.setVisible(false);
+            removeCardBtn.setManaged(false);
         }
 
         if (profile.getLastLoginAt() != null) {
@@ -391,16 +517,18 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         purchaseRows.clear();
 
         for (common.dto.EntitlementInfo e : entitlements) {
-            String type = e.isSubscription() ? "📅 Subscription" : "🛒 One-time";
+            String type = e.isSubscription() ? "Subscription" : "One-time";
             String expiry = e.getExpiryDate() != null ? e.getExpiryDate().format(DATE_FORMAT) : "-";
             String status = e.isActive() ? "Active" : "Expired";
+            String price = e.getPricePaid() != null ? CURRENCY_FORMAT.format(e.getPricePaid()) : "-";
+            String date = e.getPurchaseDate() != null ? e.getPurchaseDate().format(DATE_FORMAT) : "-";
 
             purchaseRows.add(new PurchaseRow(
                     e.getCityId(),
                     e.getCityName() != null && !e.getCityName().isEmpty() ? e.getCityName() : "City #" + e.getCityId(),
                     type,
-                    "-", // Price not available in EntitlementInfo
-                    "-", // Purchase date not available
+                    price,
+                    date,
                     status,
                     expiry));
         }
@@ -410,7 +538,7 @@ public class ProfileScreen implements GCMClient.MessageHandler {
         purchaseRows.clear();
 
         for (CustomerPurchaseDTO p : purchases) {
-            String type = p.isSubscription() ? "📅 Subscription" : "🛒 One-time";
+            String type = p.isSubscription() ? "Subscription" : "One-time";
             String date = p.getPurchasedAt() != null
                     ? p.getPurchasedAt().toLocalDateTime().format(DATE_FORMAT)
                     : "-";
@@ -434,8 +562,7 @@ public class ProfileScreen implements GCMClient.MessageHandler {
             Stage stage = (Stage) usernameLabel.getScene().getWindow();
             stage.setScene(new Scene(root));
             stage.setTitle(title);
-            stage.setWidth(width);
-            stage.setHeight(height);
+            stage.setMaximized(true);
             stage.centerOnScreen();
         } catch (IOException e) {
             showError("Navigation failed");

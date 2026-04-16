@@ -8,7 +8,9 @@ import common.MessageType;
 import common.Request;
 import common.Response;
 import common.dto.CitySearchResult;
+import common.dto.CustomerProfileDTO;
 import common.dto.SearchRequest;
+import client.LoginController;
 
 /**
  * Client-side controller for search operations.
@@ -26,8 +28,17 @@ public class SearchControl implements GCMClient.MessageHandler {
     public interface SearchResultCallback {
         void onSearchResults(List<CitySearchResult> results);
 
+        void onDiscountEligibility(common.dto.DiscountEligibilityResponse response);
+
         void onError(String errorCode, String errorMessage);
     }
+
+    /** Callback for receiving profile (e.g. saved card) when opening checkout. */
+    public interface ProfileCallback {
+        void onProfile(CustomerProfileDTO profile);
+    }
+
+    private ProfileCallback pendingProfileCallback;
 
     public SearchControl(String host, int port) throws IOException {
         // Host/port ignored as we use singleton
@@ -78,6 +89,36 @@ public class SearchControl implements GCMClient.MessageHandler {
         sendRequest(request);
     }
 
+    public void checkDiscountEligibility(int cityId, int months) {
+        // Must send auth token
+        String token = LoginController.currentSessionToken;
+        if (token == null || token.isEmpty()) {
+            if (resultCallback != null)
+                resultCallback.onDiscountEligibility(new common.dto.DiscountEligibilityResponse(false, false, cityId, months));
+            return;
+        }
+
+        common.dto.DiscountCheckRequest reqPayload = new common.dto.DiscountCheckRequest(cityId, months);
+        Request request = new Request(MessageType.CHECK_DISCOUNT_ELIGIBILITY, reqPayload, token);
+        sendRequest(request);
+    }
+
+    /**
+     * Fetch current user's profile (e.g. for saved card in checkout).
+     * Invokes callback with CustomerProfileDTO on success, or null on error/not found.
+     */
+    public void getMyProfile(ProfileCallback callback) {
+        String token = LoginController.currentSessionToken;
+        if (token == null || token.isEmpty()) {
+            if (callback != null)
+                callback.onProfile(null);
+            return;
+        }
+        pendingProfileCallback = callback;
+        Request request = new Request(MessageType.GET_MY_PROFILE, null, token);
+        sendRequest(request);
+    }
+
     /**
      * Send a request to the server.
      */
@@ -105,41 +146,87 @@ public class SearchControl implements GCMClient.MessageHandler {
 
     @Override
     public void displayMessage(Object msg) {
-        System.out.println("SearchControl: Received message from server");
-
         if (msg instanceof Response) {
             Response response = (Response) msg;
+            MessageType type = response.getRequestType();
+            System.out.println("SearchControl: Received response for " + type);
             handleResponse(response);
         } else {
-            System.out.println("SearchControl: Unknown message type: " + msg.getClass().getName());
+            System.out.println(
+                    "SearchControl: Unknown message type: " + (msg != null ? msg.getClass().getName() : "null"));
         }
+    }
+
+    /** Message types that this controller handles (catalog/search). */
+    private static boolean isSearchResponse(MessageType type) {
+        return type == MessageType.GET_CITIES_CATALOG
+                || type == MessageType.SEARCH_BY_CITY_NAME
+                || type == MessageType.SEARCH_BY_POI_NAME
+                || type == MessageType.SEARCH_BY_CITY_AND_POI;
     }
 
     /**
      * Handle a response from the server.
+     * Only processes responses for catalog/search requests so we don't consume or
+     * misinterpret other responses (e.g. GET_UNREAD_COUNT).
      */
     @SuppressWarnings("unchecked")
     private void handleResponse(Response response) {
         if (resultCallback == null) {
-            System.out.println("SearchControl: No callback registered for results");
             return;
         }
 
-        // Pass through purchase/other errors if needed, but primarily handle search
+        MessageType requestType = response.getRequestType();
+        if (requestType == null)
+            return;
+
+        if (requestType == MessageType.CHECK_DISCOUNT_ELIGIBILITY) {
+            if (response.isOk() && response.getPayload() instanceof common.dto.DiscountEligibilityResponse) {
+                resultCallback.onDiscountEligibility((common.dto.DiscountEligibilityResponse) response.getPayload());
+            } else {
+                // Default to no discount on error
+                resultCallback.onDiscountEligibility(new common.dto.DiscountEligibilityResponse(false, false, 0, 0));
+            }
+            return;
+        }
+
+        if (requestType == MessageType.GET_MY_PROFILE) {
+            ProfileCallback cb = pendingProfileCallback;
+            pendingProfileCallback = null;
+            if (cb != null) {
+                CustomerProfileDTO profile = null;
+                if (response.isOk() && response.getPayload() instanceof CustomerProfileDTO) {
+                    profile = (CustomerProfileDTO) response.getPayload();
+                }
+                cb.onProfile(profile);
+            }
+            return;
+        }
+
+        if (!isSearchResponse(requestType)) {
+            // Not a search response – ignore (e.g. from Dashboard or another screen)
+            return;
+        }
+
         if (response.isOk()) {
             Object payload = response.getPayload();
             if (payload instanceof List) {
-                // Check if it's a list of search results
                 List<?> list = (List<?>) payload;
                 if (list.isEmpty() || list.get(0) instanceof CitySearchResult) {
                     resultCallback.onSearchResults((List<CitySearchResult>) payload);
+                } else {
+                    resultCallback.onError("INVALID_RESPONSE", "Server returned unexpected data format");
                 }
+            } else if (payload == null) {
+                // Success with no payload = empty catalog
+                resultCallback.onSearchResults(java.util.Collections.emptyList());
             } else {
-                // Could be other success messages, ignore for search
+                resultCallback.onError("INVALID_RESPONSE", "Server returned unexpected data format");
             }
         } else {
-            System.out.println("SearchControl: Error response - " + response.getErrorCode());
-            resultCallback.onError(response.getErrorCode(), response.getErrorMessage());
+            resultCallback.onError(
+                    response.getErrorCode() != null ? response.getErrorCode() : "ERROR",
+                    response.getErrorMessage() != null ? response.getErrorMessage() : "Request failed");
         }
     }
 

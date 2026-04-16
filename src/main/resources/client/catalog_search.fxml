@@ -1,131 +1,138 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
-<?import javafx.scene.text.Text?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.web.WebView?>
 
-<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
-      fx:controller="client.boundary.CatalogSearchScreen"
-      spacing="0" style="-fx-background-color: #0f0f23;">
+<VBox spacing="0" style="-fx-background-color: #f5f6fa;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.boundary.CatalogSearchScreen" stylesheets="@sidebar.css">
     
-    <!-- Header Section -->
-    <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-padding: 20 30 20 30;">
-        <VBox>
-            <Label text="🗺️ GCM City Catalog" style="-fx-text-fill: white; -fx-font-size: 28px; -fx-font-weight: bold;"/>
-            <Label text="Search maps by city or point of interest" style="-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 14px;"/>
-        </VBox>
-        <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="backButton" text="← Back to Login" onAction="#handleBack"
-                style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 20; -fx-cursor: hand;"/>
+    <!-- Guest-style Navbar -->
+    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: white; -fx-padding: 14 20; -fx-border-color: #e7e7e7; -fx-border-width: 0 0 1 0;">
+        <Button fx:id="backButton" onAction="#handleBack" onMouseEntered="#handleBackHoverEnter" onMouseExited="#handleBackHoverExit" onMousePressed="#handleBackMousePressed" onMouseReleased="#handleBackMouseReleased" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #7f8c8d; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 10; -fx-padding: 6 10;" text="← Back" />
+        <Button onAction="#toggleGuestDashboard" style="-fx-background-color: #d5ed9f; -fx-text-fill: #00712d; -fx-font-family: 'Segoe UI', 'Trebuchet MS', sans-serif; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 6 14; -fx-cursor: hand;" text="Menu" />
+        <Region HBox.hgrow="ALWAYS" />
+        <HBox alignment="CENTER_RIGHT" spacing="5">
+            <WebView fx:id="navbarLogoView" maxHeight="30" maxWidth="30" minHeight="30" minWidth="30" prefHeight="30" prefWidth="30" />
+            <Button onAction="#navigateToHome" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: black; -fx-font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; -fx-font-size: 24px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 0 2 0 2;" text="Global City Map" />
+        </HBox>
     </HBox>
-    
-    <!-- Search Panel -->
-    <VBox spacing="15" style="-fx-background-color: #1a1a2e; -fx-padding: 25;">
-        
-        <!-- Define ToggleGroup -->
-        <fx:define>
-            <ToggleGroup fx:id="searchModeGroup"/>
-        </fx:define>
-        
-        <!-- Search Mode Selection -->
-        <HBox alignment="CENTER" spacing="30">
-            <Label text="Search Mode:" style="-fx-text-fill: #a0a0a0; -fx-font-size: 14px;"/>
-            <RadioButton fx:id="cityModeRadio" text="By City" toggleGroup="$searchModeGroup" selected="true"
-                        style="-fx-text-fill: white; -fx-font-size: 14px;"/>
-            <RadioButton fx:id="poiModeRadio" text="By POI" toggleGroup="$searchModeGroup"
-                        style="-fx-text-fill: white; -fx-font-size: 14px;"/>
-            <RadioButton fx:id="bothModeRadio" text="City + POI" toggleGroup="$searchModeGroup"
-                        style="-fx-text-fill: white; -fx-font-size: 14px;"/>
-        </HBox>
-        
-        <!-- Search Input Fields -->
-        <HBox spacing="15" alignment="CENTER">
-            <VBox spacing="5" fx:id="cityInputBox">
-                <Label text="City Name" style="-fx-text-fill: #a0a0a0; -fx-font-size: 12px;"/>
-                <TextField fx:id="citySearchField" promptText="e.g., Haifa, Tel Aviv..."
-                          prefWidth="250" prefHeight="40"
-                          style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-prompt-text-fill: #666; -fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #667eea; -fx-border-width: 1; -fx-padding: 8 15;"/>
+
+    <!-- Page Body -->
+    <HBox spacing="0" VBox.vgrow="ALWAYS">
+        <!-- Left vertical menu -->
+        <VBox fx:id="guestDashboardPane" managed="false" maxWidth="260" prefWidth="260" spacing="0" style="-fx-background-color: white; -fx-border-color: #e3e3e3; -fx-border-width: 0 1 0 0;" visible="false">
+            <VBox spacing="0" style="-fx-padding: 0;">
+                <Button styleClass="sidebar-nav-btn" text="Browse Catalog" onAction="#openSearchScreenFromAction" maxWidth="1.7976931348623157E308"/>
+                <Button fx:id="mapEditorNavBtn" styleClass="sidebar-nav-btn" text="Map Editor" onAction="#openMapEditorFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="myPurchasesNavBtn" styleClass="sidebar-nav-btn" text="My Purchases" onAction="#openMyPurchasesFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="profileNavBtn" styleClass="sidebar-nav-btn" text="My Profile" onAction="#openProfileFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="customersNavBtn" styleClass="sidebar-nav-btn" text="Customers" onAction="#openAdminCustomersFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="pricingNavBtn" styleClass="sidebar-nav-btn" text="Pricing" onAction="#openPricingFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="pricingApprovalNavBtn" styleClass="sidebar-nav-btn" text="Approve Prices" onAction="#openPricingApprovalFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="supportNavBtn" styleClass="sidebar-nav-btn" text="Support" onAction="#openSupportFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="agentConsoleNavBtn" styleClass="sidebar-nav-btn" text="Agent Console" onAction="#openAgentConsoleFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="editApprovalsNavBtn" styleClass="sidebar-nav-btn" text="Edit Approvals" onAction="#openEditApprovalsFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="reportsNavBtn" styleClass="sidebar-nav-btn" text="City Reports" onAction="#openReportsFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
+                <Button fx:id="userManagementNavBtn" styleClass="sidebar-nav-btn" text="User Management" onAction="#openUserManagementFromMenu" maxWidth="1.7976931348623157E308" visible="false" managed="false"/>
             </VBox>
-            
-            <VBox spacing="5" fx:id="poiInputBox" visible="false" managed="false">
-                <Label text="POI Name" style="-fx-text-fill: #a0a0a0; -fx-font-size: 12px;"/>
-                <TextField fx:id="poiSearchField" promptText="e.g., Beach, Museum, Temple..."
-                          prefWidth="250" prefHeight="40"
-                          style="-fx-background-color: #16213e; -fx-text-fill: white; -fx-prompt-text-fill: #666; -fx-font-size: 14px; -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #764ba2; -fx-border-width: 1; -fx-padding: 8 15;"/>
-            </VBox>
-            
-            <Button fx:id="searchButton" text="🔍 Search" onAction="#handleSearch"
-                    prefHeight="40" prefWidth="120"
-                    style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;"/>
-            
-            <Button fx:id="showAllButton" text="📋 Show All" onAction="#handleShowAll"
-                    prefHeight="40" prefWidth="120"
-                    style="-fx-background-color: #16213e; -fx-text-fill: #667eea; -fx-font-size: 14px; -fx-border-color: #667eea; -fx-border-width: 1; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;"/>
-        </HBox>
-        
-        <!-- Status Label -->
-        <Label fx:id="statusLabel" text="Ready to search. Enter a city or POI name, or click 'Show All' to browse the catalog."
-               style="-fx-text-fill: #a0a0a0; -fx-font-size: 12px;" alignment="CENTER" maxWidth="Infinity"/>
-    </VBox>
-    
-    <!-- Main Content Area -->
-    <HBox VBox.vgrow="ALWAYS" spacing="0">
+        </VBox>
+
+        <VBox spacing="0" HBox.hgrow="ALWAYS">
+            <!-- Define ToggleGroup -->
+            <fx:define>
+                <ToggleGroup fx:id="searchModeGroup" />
+            </fx:define>
+
+            <!-- Main Content Area -->
+            <HBox spacing="0" VBox.vgrow="ALWAYS">
         
         <!-- Results List (Left Panel) -->
-        <VBox prefWidth="400" style="-fx-background-color: #16213e; -fx-padding: 15;">
-            <Label text="Search Results" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 0 0 10 0;"/>
-            <ListView fx:id="resultsListView" VBox.vgrow="ALWAYS"
-                     style="-fx-background-color: #0f0f23; -fx-control-inner-background: #0f0f23; -fx-background-radius: 8;"/>
-            <Label fx:id="resultCountLabel" text="0 results" style="-fx-text-fill: #666; -fx-font-size: 11px; -fx-padding: 8 0 0 0;"/>
+        <VBox prefWidth="400" style="-fx-background-color: white; -fx-padding: 15;" spacing="10">
+            <Label style="-fx-text-fill: #2c3e50; -fx-font-size: 16px; -fx-font-weight: bold;" text="Search Results" />
+            <Label style="-fx-text-fill: #2c3e50; -fx-font-size: 13px;" text="Search Mode:" />
+            <HBox alignment="CENTER_LEFT" spacing="18">
+                <RadioButton fx:id="cityModeRadio" selected="true" style="-fx-text-fill: #2c3e50; -fx-font-size: 13px;" text="By City">
+                    <toggleGroup>
+                        <ToggleGroup fx:id="searchModeGroup" />
+                    </toggleGroup>
+                </RadioButton>
+                <RadioButton fx:id="poiModeRadio" style="-fx-text-fill: #2c3e50; -fx-font-size: 13px;" text="By POI" toggleGroup="$searchModeGroup" />
+                <RadioButton fx:id="bothModeRadio" style="-fx-text-fill: #2c3e50; -fx-font-size: 13px;" text="City + POI" toggleGroup="$searchModeGroup" />
+            </HBox>
+            <VBox fx:id="cityInputBox" spacing="5">
+                <Label style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;" text="City Name" />
+                <TextField fx:id="citySearchField" prefHeight="38" promptText="e.g., Haifa, Tel Aviv..." style="-fx-background-color: white; -fx-text-fill: #2c3e50; -fx-prompt-text-fill: #95a5a6; -fx-font-size: 13px; -fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #bdc3c7; -fx-border-width: 1; -fx-padding: 8 12;" />
+            </VBox>
+            <VBox fx:id="poiInputBox" managed="false" spacing="5" visible="false">
+                <Label style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;" text="POI Name" />
+                <TextField fx:id="poiSearchField" prefHeight="38" promptText="e.g., Beach, Museum, Temple..." style="-fx-background-color: white; -fx-text-fill: #2c3e50; -fx-prompt-text-fill: #95a5a6; -fx-font-size: 13px; -fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #bdc3c7; -fx-border-width: 1; -fx-padding: 8 12;" />
+            </VBox>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Button fx:id="searchButton" onAction="#handleSearch" prefHeight="38" prefWidth="110" style="-fx-background-color: #00712d; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-radius: 5; -fx-cursor: hand;" text="Search" />
+                <Button fx:id="showAllButton" onAction="#handleShowAll" prefHeight="38" prefWidth="110" style="-fx-background-color: #00712d; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold; -fx-background-radius: 5; -fx-cursor: hand;" text="Show All" />
+            </HBox>
+            <Label fx:id="statusLabel" alignment="CENTER_LEFT" maxWidth="Infinity" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px;" text="Ready." />
+            <ListView fx:id="resultsListView" style="-fx-background-color: #f5f6fa; -fx-control-inner-background: #f5f6fa; -fx-background-radius: 5;" VBox.vgrow="ALWAYS" />
+            <Label fx:id="resultCountLabel" style="-fx-text-fill: #7f8c8d; -fx-font-size: 11px; -fx-padding: 8 0 0 0;" text="0 results" />
         </VBox>
         
-        <!-- Details Panel (Right Panel) -->
-        <VBox HBox.hgrow="ALWAYS" style="-fx-background-color: #0f0f23; -fx-padding: 20;">
-            <Label text="City Details" style="-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-padding: 0 0 15 0;"/>
-            
-            <!-- City Info Card -->
-            <VBox fx:id="detailsCard" spacing="15" style="-fx-background-color: #1a1a2e; -fx-background-radius: 12; -fx-padding: 20;" visible="false" managed="false">
-                <HBox alignment="CENTER_LEFT" spacing="15">
-                    <Label fx:id="cityNameLabel" text="City Name" style="-fx-text-fill: #667eea; -fx-font-size: 24px; -fx-font-weight: bold;"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="priceLabel" text="Price" style="-fx-text-fill: #27ae60; -fx-font-size: 20px; -fx-font-weight: bold;"/>
-                </HBox>
-                
-                <Label fx:id="cityDescLabel" text="Description" style="-fx-text-fill: #ccc; -fx-font-size: 14px;" wrapText="true"/>
-                
-                <!-- Purchase Options (Phase 5) -->
-                <VBox fx:id="purchaseBox" spacing="10" visible="false" managed="false" 
-                      style="-fx-background-color: #2c3e50; -fx-padding: 10; -fx-background-radius: 8;">
-                    <!-- Populated dynamically -->
+        <!-- Details Panel (Right Panel) - Scrollable -->
+        <ScrollPane fitToWidth="true" HBox.hgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-background: transparent; -fx-padding: 0;">
+            <content>
+                <VBox style="-fx-background-color: #f5f6fa; -fx-padding: 20;" spacing="0">
+                    <Label style="-fx-text-fill: #2c3e50; -fx-font-size: 18px; -fx-font-weight: bold; -fx-padding: 0 0 15 0;" text="City Details" />
+                    
+                    <!-- City Info Card -->
+                    <VBox fx:id="detailsCard" managed="false" spacing="15" style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20;" visible="false">
+                        <HBox alignment="CENTER_LEFT" spacing="15">
+                            <Label fx:id="cityNameLabel" style="-fx-text-fill: #2c3e50; -fx-font-size: 22px; -fx-font-weight: bold;" text="City Name" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Label fx:id="priceLabel" style="-fx-text-fill: #00712d; -fx-font-size: 18px; -fx-font-weight: bold;" text="Price" />
+                        </HBox>
+                        
+                        <Label fx:id="cityDescLabel" style="-fx-text-fill: #7f8c8d; -fx-font-size: 13px;" text="Description" wrapText="true" />
+                        
+                        <!-- Purchase Options (Phase 5) -->
+                        <VBox fx:id="purchaseBox" managed="false" spacing="10" style="-fx-background-color: #f5f6fa; -fx-padding: 10; -fx-background-radius: 8;" visible="false">
+                            <!-- Populated dynamically -->
+                        </VBox>
+                        
+                        <Label style="-fx-text-fill: #2c3e50; -fx-font-size: 15px; -fx-font-weight: bold;" text="Available Maps" />
+                        <ListView fx:id="mapsListView" prefHeight="140" style="-fx-background-color: #f5f6fa; -fx-control-inner-background: #f5f6fa; -fx-background-radius: 5;" />
+
+                        <Label style="-fx-text-fill: #2c3e50; -fx-font-size: 15px; -fx-font-weight: bold;" text="Available Tours" />
+                        <ListView fx:id="toursListView" prefHeight="140" style="-fx-background-color: #f5f6fa; -fx-control-inner-background: #f5f6fa; -fx-background-radius: 5;" />
+                        
+                        <!-- Map/Tour Details -->
+                        <VBox fx:id="mapDetailsBox" managed="false" spacing="8" style="-fx-background-color: #f5f6fa; -fx-background-radius: 8; -fx-padding: 15;" visible="false">
+                            <Label fx:id="mapNameLabel" style="-fx-text-fill: #2c3e50; -fx-font-size: 15px; -fx-font-weight: bold;" text="Map Name" />
+                            <Label fx:id="mapDescLabel" style="-fx-text-fill: #7f8c8d; -fx-font-size: 13px;" text="Map Description" wrapText="true" />
+                            <HBox spacing="20">
+                                <Label fx:id="poiCountLabel" style="-fx-text-fill: #2c3e50; -fx-font-size: 12px;" text="0 POIs" />
+                                <Label fx:id="tourCountLabel" style="-fx-text-fill: #2c3e50; -fx-font-size: 12px;" text="0 Tours" />
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                    
+                    <!-- Empty State -->
+                    <VBox fx:id="emptyState" alignment="CENTER" spacing="15" VBox.vgrow="ALWAYS" style="-fx-padding: 40 0 0 0;">
+                        <Label style="-fx-text-fill: #7f8c8d; -fx-font-size: 16px;" text="Select a city to view details" />
+                        <Label style="-fx-text-fill: #95a5a6; -fx-font-size: 13px;" text="Use search on the left to explore available cities and maps" />
+                    </VBox>
                 </VBox>
-                
-                <Separator/>
-                
-                <Label text="📍 Available Maps" style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
-                
-                <ListView fx:id="mapsListView" prefHeight="200"
-                         style="-fx-background-color: #0f0f23; -fx-control-inner-background: #0f0f23; -fx-background-radius: 8;"/>
-                
-                <!-- Map Details -->
-                <VBox fx:id="mapDetailsBox" spacing="8" visible="false" managed="false" 
-                      style="-fx-background-color: #16213e; -fx-background-radius: 8; -fx-padding: 15;">
-                    <Label fx:id="mapNameLabel" text="Map Name" style="-fx-text-fill: #764ba2; -fx-font-size: 16px; -fx-font-weight: bold;"/>
-                    <Label fx:id="mapDescLabel" text="Map Description" style="-fx-text-fill: #aaa; -fx-font-size: 13px;" wrapText="true"/>
-                    <HBox spacing="20">
-                        <Label fx:id="poiCountLabel" text="0 POIs" style="-fx-text-fill: #667eea; -fx-font-size: 12px;"/>
-                        <Label fx:id="tourCountLabel" text="0 Tours" style="-fx-text-fill: #27ae60; -fx-font-size: 12px;"/>
-                    </HBox>
-                </VBox>
-            </VBox>
-            
-            <!-- Empty State -->
-            <VBox fx:id="emptyState" alignment="CENTER" spacing="15" VBox.vgrow="ALWAYS">
-                <Label text="🔍" style="-fx-font-size: 48px;"/>
-                <Label text="Select a city to view details" style="-fx-text-fill: #666; -fx-font-size: 16px;"/>
-                <Label text="Use the search bar or 'Show All' to explore available maps" style="-fx-text-fill: #444; -fx-font-size: 13px;"/>
-            </VBox>
+            </content>
+        </ScrollPane>
+            </HBox>
         </VBox>
     </HBox>
 </VBox>

@@ -8,6 +8,7 @@ import common.dto.EntitlementInfo;
 import common.dto.PurchaseRequest;
 import common.dto.PurchaseResponse;
 import server.dao.PurchaseDAO;
+import server.SessionManager;
 
 import java.time.LocalDate;
 
@@ -22,6 +23,7 @@ public class PurchaseHandler {
             case PURCHASE_ONE_TIME:
             case PURCHASE_SUBSCRIPTION:
             case GET_ENTITLEMENT:
+            case CHECK_DISCOUNT_ELIGIBILITY:
             case CAN_DOWNLOAD:
             case DOWNLOAD_MAP_VERSION:
             case RECORD_VIEW_EVENT:
@@ -42,6 +44,8 @@ public class PurchaseHandler {
                 return handlePurchaseSubscription(request);
             case GET_ENTITLEMENT:
                 return handleGetEntitlement(request);
+            case CHECK_DISCOUNT_ELIGIBILITY:
+                return handleCheckDiscountEligibility(request);
             case CAN_DOWNLOAD:
                 return handleCanDownload(request);
             case DOWNLOAD_MAP_VERSION:
@@ -106,6 +110,11 @@ public class PurchaseHandler {
         boolean success = PurchaseDAO.purchaseOneTime(userId, purchase.getCityId());
 
         if (success) {
+            // Save card if requested
+            if (purchase.isSaveCard()) {
+                server.dao.UserDAO.updateProfile(userId, null, null, purchase.getCardLast4(), purchase.getCardExpiry());
+            }
+
             server.dao.DailyStatsDAO.increment(purchase.getCityId(), server.dao.DailyStatsDAO.Metric.PURCHASE_ONE_TIME);
             return Response.success(request, new PurchaseResponse(true, "Purchase successful!",
                     EntitlementInfo.EntitlementType.ONE_TIME, null));
@@ -130,10 +139,16 @@ public class PurchaseHandler {
             return Response.error(request, Response.ERR_VALIDATION, "Invalid purchase type");
         }
 
-        boolean isRenewal = PurchaseDAO.hasPreviousSubscription(userId, purchase.getCityId());
+        boolean isRenewal = PurchaseDAO.hasActiveExpiringSubscription(userId, purchase.getCityId(),
+                purchase.getMonths());
         boolean success = PurchaseDAO.purchaseSubscription(userId, purchase.getCityId(), purchase.getMonths());
 
         if (success) {
+            // Save card if requested
+            if (purchase.isSaveCard()) {
+                server.dao.UserDAO.updateProfile(userId, null, null, purchase.getCardLast4(), purchase.getCardExpiry());
+            }
+
             // Log as RENEWAL if user had previous subscription, otherwise SUBSCRIPTION
             server.dao.DailyStatsDAO.Metric metric = isRenewal ? server.dao.DailyStatsDAO.Metric.RENEWAL
                     : server.dao.DailyStatsDAO.Metric.PURCHASE_SUBSCRIPTION;
@@ -166,6 +181,36 @@ public class PurchaseHandler {
 
         EntitlementInfo entitlement = PurchaseDAO.getEntitlement(userId, cityId);
         return Response.success(request, entitlement);
+    }
+
+    private static Response handleCheckDiscountEligibility(Request request) {
+        Integer userId = getAuthenticatedUserId(request);
+        if (userId == null) {
+            // Not eligible if not logged in
+            if (request.getPayload() instanceof common.dto.DiscountCheckRequest) {
+                common.dto.DiscountCheckRequest check = (common.dto.DiscountCheckRequest) request.getPayload();
+                return Response.success(request,
+                        new common.dto.DiscountEligibilityResponse(false, false, check.getCityId(), check.getMonths()));
+            }
+            return Response.success(request, new common.dto.DiscountEligibilityResponse(false, false, 0, 0));
+        }
+
+        if (!(request.getPayload() instanceof common.dto.DiscountCheckRequest)) {
+            return Response.error(request, Response.ERR_VALIDATION, "Invalid discount check request");
+        }
+
+        common.dto.DiscountCheckRequest check = (common.dto.DiscountCheckRequest) request.getPayload();
+
+        // Controls the label:
+        // - renew label => user has active subscription for exact city + months
+        boolean renewalEligible = PurchaseDAO.hasActiveSubscriptionForDuration(userId, check.getCityId(), check.getMonths());
+
+        // Controls the discount:
+        // - 10% discount => user has an active subscription for the same city+months
+        boolean discountEligible = PurchaseDAO.hasActiveSubscriptionForDuration(userId, check.getCityId(), check.getMonths());
+
+        return Response.success(request,
+                new common.dto.DiscountEligibilityResponse(renewalEligible, discountEligible, check.getCityId(), check.getMonths()));
     }
 
     private static Response handleCanDownload(Request request) {
@@ -208,12 +253,22 @@ public class PurchaseHandler {
         EntitlementInfo entitlement = PurchaseDAO.getEntitlement(userId, cityId);
 
         if (entitlement.isCanDownload()) {
-            PurchaseDAO.recordDownload(userId, cityId);
-            server.dao.DailyStatsDAO.increment(cityId, server.dao.DailyStatsDAO.Metric.DOWNLOAD);
+            // Only record in download_events for one-time (so subscription downloads don't
+            // use one-time slots)
+            if (entitlement.getType() == EntitlementInfo.EntitlementType.ONE_TIME) {
+                PurchaseDAO.recordDownload(userId, cityId);
+            }
+            // Report metric: count only downloads by subscribers (spec: "Number of map downloads - ONLY downloads performed by subscribers")
+            if (entitlement.getType() == EntitlementInfo.EntitlementType.SUBSCRIPTION) {
+                server.dao.DailyStatsDAO.increment(cityId, server.dao.DailyStatsDAO.Metric.DOWNLOAD);
+            }
             return Response.success(request, "Download authorized and recorded");
-        } else {
-            return Response.error(request, Response.ERR_UNAUTHORIZED, "Purchase required to download");
         }
+        if (entitlement.getType() == EntitlementInfo.EntitlementType.ONE_TIME) {
+            return Response.error(request, Response.ERR_FORBIDDEN,
+                    "One-time download limit reached for this city. You can purchase again for another download.");
+        }
+        return Response.error(request, Response.ERR_UNAUTHORIZED, "Purchase required to download");
     }
 
     private static Response handleRecordViewEvent(Request request) {
@@ -247,35 +302,10 @@ public class PurchaseHandler {
     }
 
     private static Integer getAuthenticatedUserId(Request request) {
-        // Extract token from request metadata or payload?
-        // Existing AuthHandler creates a session.
-        // Usually client sends token in loop or we assume connection has session.
-        // Looking at AuthHandler, it returns a token.
-        // Assuming Request object might NOT carry token explicitly in headers (simple
-        // OCSF).
-        // BUT, SessionManager maps token to userId.
-        // We need the client to send the token.
-        // Or the ConnectionToClient has info.
-
-        // Since OCSF architecture: Request is just data. ConnectionToClient holds
-        // state.
-        // But here verify logic:
-        // We will assume for now that authentication is handled or token is passed.
-        // Wait, looking at SessionManager usage in AuthHandler:
-        // "String token = sessions.createSession(user.id...)"
-
-        // In a real OCSF app, we'd identify user by Connection.
-        // For this Phase 5, let's look at how other handlers get user ID.
-        // SearchHandler doesn't need auth.
-        // MapEditHandler likely needs it.
-
-        // Let's check session usage available.
-        // If Request doesn't have token, we might need a way to pass it.
-
-        // UPDATE: For this project, we might just pass userId in payload or rely on a
-        // "SessionToken" field in generic Request if exists?
-        // Let's check Request.java.
-
-        return 1; // MOCK: Return customer ID for testing until verified
+        String token = request.getSessionToken();
+        if (token == null || token.isEmpty())
+            return null;
+        SessionManager.SessionInfo info = SessionManager.getInstance().validateSession(token);
+        return info != null ? info.userId : null;
     }
 }

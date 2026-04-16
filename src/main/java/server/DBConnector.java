@@ -1,10 +1,10 @@
 package server;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-
 import java.sql.Connection;
 import java.sql.SQLException;
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 /**
  * Database connection manager using HikariCP connection pool.
@@ -19,7 +19,7 @@ public class DBConnector {
     // Database configuration
     private static final String URL = "jdbc:mysql://localhost:3306/gcm_db?serverTimezone=Asia/Jerusalem";
     private static final String USER = "root";
-    private static final String PASS = "";
+    private static final String PASS = "momo8523";
 
     // Pool configuration
     private static final int MAX_POOL_SIZE = 10;
@@ -96,9 +96,10 @@ public class DBConnector {
      * 
      * @return Database connection from pool
      */
-    public static Connection getConnection() {
+    public static Connection getConnection() throws SQLException {
         if (!poolInitialized) {
             initializePool();
+            ensureSchema();
         }
 
         if (dataSource == null) {
@@ -106,14 +107,14 @@ public class DBConnector {
             System.err.println("  1. Check if MySQL is running");
             System.err.println("  2. Check if database 'gcm_db' exists");
             System.err.println("  3. Check credentials in DBConnector");
-            return null;
+            throw new SQLException("Database Connection Failed! Pool not initialized.");
         }
 
         try {
             return dataSource.getConnection();
         } catch (SQLException e) {
             System.err.println("Failed to get connection from pool: " + e.getMessage());
-            return null;
+            throw e;
         }
     }
 
@@ -148,19 +149,36 @@ public class DBConnector {
     }
 
     /**
+     * Ensures necessary schema modifications exist.
+     */
+    private static void ensureSchema() {
+        if (dataSource == null)
+            return;
+        try (Connection conn = dataSource.getConnection();
+                java.sql.Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE customers ADD COLUMN card_expiry VARCHAR(5)");
+            System.out.println("✓ Auto-migration: Added card_expiry column to customers table.");
+        } catch (SQLException e) {
+            // Ignored, column likely already exists
+        }
+    }
+
+    /**
      * Test connection to database.
      */
     public static void main(String[] args) {
-        Connection conn = getConnection();
-        if (conn != null) {
-            System.out.println("SUCCESS: Connected to Database!");
-            System.out.println(getPoolStats());
-            try {
+        try {
+            Connection conn = getConnection();
+            if (conn != null) {
+                System.out.println("SUCCESS: Connected to Database!");
+                System.out.println(getPoolStats());
                 conn.close(); // Return to pool
-            } catch (SQLException e) {
-                e.printStackTrace();
             }
+        } catch (SQLException e) {
+            System.err.println("Main DB Test Failed: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            closePool();
         }
-        closePool();
     }
 }

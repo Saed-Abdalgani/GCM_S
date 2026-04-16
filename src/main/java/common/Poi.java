@@ -13,19 +13,34 @@ public class Poi implements Serializable {
     private int cityId;
     private String name;
     private String location; // e.g., "32.7940,34.9896" (lat,lng) or description
+    private Double latitude;  // for map display and distance calculation
+    private Double longitude;
     private String category; // e.g., "Beach", "Museum", "Restaurant", "Historic"
     private String shortExplanation; // Brief description
     private boolean accessible; // Wheelchair accessible
+    /** True when POI is unapproved (draft) on the map – visible only to the employee who created it until manager approves. */
+    private boolean draft;
+    /** True when POI is pending removal from map – waiting for manager approval. */
+    private boolean pendingRemoval;
+    /** True when POI is pending full deletion – waiting for manager approval. */
+    private boolean pendingDeletion;
 
     public Poi() {
     }
 
     public Poi(int id, int cityId, String name, String location,
             String category, String shortExplanation, boolean accessible) {
+        this(id, cityId, name, location, null, null, category, shortExplanation, accessible);
+    }
+
+    public Poi(int id, int cityId, String name, String location,
+            Double latitude, Double longitude, String category, String shortExplanation, boolean accessible) {
         this.id = id;
         this.cityId = cityId;
         this.name = name;
         this.location = location;
+        this.latitude = latitude;
+        this.longitude = longitude;
         this.category = category;
         this.shortExplanation = shortExplanation;
         this.accessible = accessible;
@@ -64,6 +79,22 @@ public class Poi implements Serializable {
         this.location = location;
     }
 
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
     public String getCategory() {
         return category;
     }
@@ -86,6 +117,33 @@ public class Poi implements Serializable {
 
     public void setAccessible(boolean accessible) {
         this.accessible = accessible;
+    }
+
+    /** True when POI is unapproved (draft) on the map. */
+    public boolean isDraft() {
+        return draft;
+    }
+
+    public void setDraft(boolean draft) {
+        this.draft = draft;
+    }
+
+    /** True when POI is pending removal from map (waiting for manager approval). */
+    public boolean isPendingRemoval() {
+        return pendingRemoval;
+    }
+
+    public void setPendingRemoval(boolean pendingRemoval) {
+        this.pendingRemoval = pendingRemoval;
+    }
+
+    /** True when POI is pending full deletion (waiting for manager approval). */
+    public boolean isPendingDeletion() {
+        return pendingDeletion;
+    }
+
+    public void setPendingDeletion(boolean pendingDeletion) {
+        this.pendingDeletion = pendingDeletion;
     }
 
     @Override

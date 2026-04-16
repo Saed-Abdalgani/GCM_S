@@ -39,6 +39,7 @@ public class ReportHandler {
         try {
             List<DailyStat> stats = generator.generate(reportReq.getFromDate(), reportReq.getToDate(),
                     reportReq.getCityId());
+            System.out.println("[Report] Sending response with " + (stats != null ? stats.size() : 0) + " stats");
             return Response.success(request, stats);
         } catch (Exception e) {
             e.printStackTrace();

@@ -15,6 +15,7 @@ public class CustomerProfileDTO implements Serializable {
     private String email;
     private String phone;
     private String cardLast4;
+    private String cardExpiry;
     private Timestamp createdAt;
     private Timestamp lastLoginAt;
     private int totalPurchases;
@@ -72,6 +73,14 @@ public class CustomerProfileDTO implements Serializable {
 
     public void setCardLast4(String cardLast4) {
         this.cardLast4 = cardLast4;
+    }
+
+    public String getCardExpiry() {
+        return cardExpiry;
+    }
+
+    public void setCardExpiry(String cardExpiry) {
+        this.cardExpiry = cardExpiry;
     }
 
     public Timestamp getCreatedAt() {

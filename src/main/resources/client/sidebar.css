@@ -1,0 +1,40 @@
+/* Sidebar nav buttons: full width, hover background */
+.sidebar-nav-btn {
+    -fx-max-width: infinity;
+    -fx-background-color: white;
+    -fx-text-fill: #00712d;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 14;
+    -fx-cursor: hand;
+    -fx-alignment: center-left;
+    -fx-border-color: #d9dde2;
+    -fx-border-width: 0 0 1 0;
+    -fx-background-insets: 0;
+}
+.sidebar-nav-btn:hover {
+    -fx-background-color: #d5ed9f;
+}
+
+/* Approval screens: white table with border lines between rows */
+.approval-table .table-row-cell {
+    -fx-background-color: white;
+}
+.approval-table .table-row-cell .table-cell {
+    -fx-background-color: white;
+    -fx-border-color: #e9ecef transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-text-fill: #2d3436;
+}
+.approval-table .column-header {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #e9ecef transparent transparent transparent;
+    -fx-border-width: 1 0 1 0;
+    -fx-text-fill: #2d3436;
+}
+.approval-table .table-row-cell:selected .table-cell {
+    -fx-background-color: #e8f4fd;
+}
+.approval-table {
+    -fx-table-cell-border-color: #e9ecef;
+}
